@@ -1,0 +1,1662 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no" />
+<title>薬品在庫・廃液管理</title>
+<script type="importmap">
+{
+  "imports": {
+    "react": "https://esm.sh/react@18.2.0",
+    "react-dom/client": "https://esm.sh/react-dom@18.2.0/client",
+    "lucide-react": "https://esm.sh/lucide-react@0.383.0?external=react"
+  }
+}
+</script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+</head>
+<body style="margin:0;padding:0;">
+<div id="root"></div>
+
+<script type="text/babel" data-type="module" data-presets="react">
+import React, { useState, useMemo, useEffect } from "react";
+import ReactDOM from "react-dom/client";
+import {
+  Search,
+  MapPin,
+  Beaker,
+  Trash2,
+  ChevronRight,
+  ArrowLeft,
+  Save,
+  AlertTriangle,
+  Package,
+  X,
+  Lock,
+  Calendar,
+  User,
+  FlaskConical,
+  Plus,
+  Check,
+  Calculator,
+  Info,
+} from "lucide-react";
+
+import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+import {
+  getFirestore,
+  collection,
+  doc,
+  getDocs,
+  setDoc,
+  updateDoc,
+  deleteDoc,
+  onSnapshot,
+  writeBatch,
+} from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+import {
+  getAuth,
+  signInAnonymously,
+  onAuthStateChanged,
+} from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+
+/* ------------------------------------------------------------------ */
+/*  Firebase 初期化                                                    */
+/* ------------------------------------------------------------------ */
+
+const firebaseConfig = {
+  apiKey: "AIzaSyB3rpNftj7h_7onZ_rC3qUHXhjFSWH6Y74",
+  authDomain: "chemical-management-dc65a.firebaseapp.com",
+  projectId: "chemical-management-dc65a",
+  storageBucket: "chemical-management-dc65a.firebasestorage.app",
+  messagingSenderId: "347752460271",
+  appId: "1:347752460271:web:b98500942e7308afeb101a",
+};
+
+const fbApp = initializeApp(firebaseConfig);
+const db = getFirestore(fbApp);
+const auth = getAuth(fbApp);
+
+/* ------------------------------------------------------------------ */
+/*  デザイントークン                                                    */
+/* ------------------------------------------------------------------ */
+
+const FONT_IMPORT = `
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Mono:wght@500;600&family=Inter:wght@400;500;600&display=swap');
+`;
+
+const C = {
+  bg: "#EEF1EC",
+  paper: "#FBFBF9",
+  ink: "#182524",
+  inkSoft: "#4E625E",
+  line: "#D8DED8",
+  amber: "#E2A233",
+  amberDeep: "#B97A1B",
+  teal: "#2F6F6B",
+  tealDeep: "#1F4E4B",
+  danger: "#B23B31",
+  dangerBg: "#F6E4E1",
+  okBg: "#E4EEE9",
+  lockBg: "#EDEFEA",
+};
+
+const DISPOSAL_POLICY = "タンク使用開始日から1年経過か、満杯時に廃棄";
+
+/* ------------------------------------------------------------------ */
+/*  初期シードデータ（Firestoreが空の時だけ書き込む）                        */
+/* ------------------------------------------------------------------ */
+
+const initialChemicals = [
+  { id: "c1", name: "エタノール", formula: "C2H5OH", location: { id: "l1", name: "薬品庫A 棚1", note: "常温・可燃物キャビネット" }, stock: { amount: 640, capacity: 800, unit: "g" }, wasteId: "b5" },
+  { id: "c2", name: "アセトン", formula: "C3H6O", location: { id: "l1", name: "薬品庫A 棚1", note: "常温・可燃物キャビネット" }, stock: { amount: 120, capacity: 400, unit: "g" }, wasteId: "b5" },
+  { id: "c3", name: "塩酸", formula: "HCl", location: { id: "l2", name: "危険物保管庫", note: "酸・アルカリ専用棚" }, stock: { amount: 980, capacity: 1200, unit: "g" }, wasteId: "a5strong" },
+  { id: "c4", name: "水酸化ナトリウム", formula: "NaOH", location: { id: "l3", name: "薬品庫A 棚2", note: "潮解注意・密閉保管" }, stock: { amount: 500, capacity: 500, unit: "g" }, wasteId: "a6strong" },
+  { id: "c5", name: "トルエン", formula: "C7H8", location: { id: "l4", name: "換気ドラフト内保管庫", note: "臭気強・引火注意" }, stock: { amount: 0, capacity: 900, unit: "g" }, wasteId: "b5" },
+  { id: "c6", name: "クロロホルム", formula: "CHCl3", location: { id: "l4", name: "換気ドラフト内保管庫", note: "臭気強・引火注意" }, stock: { amount: 480, capacity: 600, unit: "g" }, wasteId: "b2none" },
+  { id: "c7", name: "硫酸銅(II)", formula: "CuSO4", location: { id: "l3", name: "薬品庫A 棚2", note: "潮解注意・密閉保管" }, stock: { amount: 200, capacity: 300, unit: "g" }, wasteId: "a4none" },
+  { id: "c8", name: "硝酸", formula: "HNO3", location: { id: "l2", name: "危険物保管庫", note: "酸・アルカリ専用棚" }, stock: { amount: 650, capacity: 1200, unit: "g" }, wasteId: "a5strong" },
+];
+
+const initialWasteCategories = [
+  { id: "a4none", code: "A-4無", name: "金属系廃液（無害）", note: "重金属化合物（Ni・Cu・Zn・Mn・Co等）", color: "#5B4B7A", disposal: DISPOSAL_POLICY, tankStartDate: "2025-10-23", entries: [
+    { id: "a4-1", date: "2025-10-23", personName: "中野真那", substanceName: "CoCl2(塩化コバルト)", concentrationGL: 5, volumeMl: 100 },
+    { id: "a4-2", date: "2025-12-23", personName: "清水", substanceName: "Cu・Co・Mn", concentrationGL: 0.1, volumeMl: 28 },
+    { id: "a4-3", date: "2025-12-23", personName: "清水", substanceName: "Mo", concentrationGL: 0.1, volumeMl: 100 },
+    { id: "a4-4", date: "2025-12-23", personName: "清水", substanceName: "Co・Fe・Mn", concentrationGL: 0.1, volumeMl: 20 },
+    { id: "a4-5", date: "2025-12-23", personName: "清水", substanceName: "MnSO4", concentrationGL: 1.37, volumeMl: 60 },
+    { id: "a4-6", date: "2025-12-23", personName: "清水", substanceName: "Cu(NO3)2・3H2O", concentrationGL: 12.05, volumeMl: 100 },
+  ]},
+  { id: "a6strong", code: "A-6強", name: "強アルカリ系廃液（pH12.5以上）", note: "廃アルカリ溶液（NaOH・KOH・Na2CO3等）", color: C.amberDeep, disposal: DISPOSAL_POLICY, tankStartDate: "2025-11-25", entries: [
+    { id: "a6s-1", date: "2025-11-25", personName: "なかむら", substanceName: "水酸化カリウム", concentrationGL: 66, volumeMl: 30 },
+    { id: "a6s-2", date: "2025-11-28", personName: "なかむら", substanceName: "水酸化カリウム", concentrationGL: 66, volumeMl: 21 },
+    { id: "a6s-3", date: "2025-12-05", personName: "なかむら", substanceName: "水酸化カリウム", concentrationGL: 66, volumeMl: 21 },
+    { id: "a6s-4", date: "2025-12-27", personName: "なかむら", substanceName: "水酸化カリウム", concentrationGL: 66, volumeMl: 21 },
+    { id: "a6s-5", date: "2025-12-23", personName: "清水", substanceName: "水酸化ナトリウム", concentrationGL: 40, volumeMl: 250 },
+    { id: "a6s-6", date: "2025-12-23", personName: "清水", substanceName: "水酸化ナトリウム", concentrationGL: 40, volumeMl: 42 },
+    { id: "a6s-7", date: "2025-12-23", personName: "清水", substanceName: "KOH", concentrationGL: 0.561, volumeMl: 100 },
+    { id: "a6s-8", date: "2025-12-23", personName: "清水", substanceName: "KOH", concentrationGL: 2.796, volumeMl: 32 },
+    { id: "a6s-9", date: "2025-12-23", personName: "清水", substanceName: "KOH", concentrationGL: 5.611, volumeMl: 210 },
+    { id: "a6s-10", date: "2025-12-23", personName: "清水", substanceName: "KOH", concentrationGL: 56.11, volumeMl: 10 },
+    { id: "a6s-11", date: "2026-07-02", personName: "木下", substanceName: "KOH", concentrationGL: 280.55, volumeMl: 30 },
+  ]},
+  { id: "a6weak", code: "A-6弱", name: "弱アルカリ系廃液（pH12.5未満）", note: "廃アルカリ溶液（NaOH・KOH等の希釈廃液）", color: "#D8B65C", disposal: DISPOSAL_POLICY, tankStartDate: "2026-07-13", entries: [
+    { id: "a6w-1", date: "2026-07-13", personName: "大野", substanceName: "テレフタル酸二ナトリウム", concentrationGL: 0.21, volumeMl: 140 },
+    { id: "a6w-2", date: "2026-07-16", personName: "増田", substanceName: "テレフタル酸二ナトリウム", concentrationGL: 0.21, volumeMl: 150 },
+    { id: "a6w-3", date: "2026-07-22", personName: "大野", substanceName: "テレフタル酸二ナトリウム", concentrationGL: 0.21, volumeMl: 600 },
+  ]},
+  { id: "b2none", code: "B-2無", name: "含ハロゲン有機溶媒類（無害）", note: "クロロホルム・臭化メチル等", color: "#7A4A3A", disposal: DISPOSAL_POLICY, tankStartDate: "2025-11-11", entries: [
+    { id: "b2-1", date: "2025-11-11", personName: "和田", substanceName: "トリクロロ酢酸（TCA）", concentrationGL: 100, volumeMl: 144 },
+    { id: "b2-2", date: "2025-12-09", personName: "和田", substanceName: "トリクロロ酢酸（TCA）", concentrationGL: 100, volumeMl: 20 },
+    { id: "b2-3", date: "2025-12-23", personName: "清水", substanceName: "トリクロロ酢酸（TCA）", concentrationGL: 10, volumeMl: 380 },
+    { id: "b2-4", date: "2025-12-23", personName: "清水", substanceName: "トリクロロ酢酸（TCA）", concentrationGL: 10, volumeMl: 380 },
+    { id: "b2-5", date: "2025-12-23", personName: "清水", substanceName: "トリクロロ酢酸（TCA）", concentrationGL: 1, volumeMl: 300 },
+    { id: "b2-6", date: "2025-12-23", personName: "清水", substanceName: "トリクロロ酢酸（TCA）", concentrationGL: 1, volumeMl: 10 },
+    { id: "b2-7", date: "2026-01-14", personName: "和田", substanceName: "トリクロロ酢酸（TCA）", concentrationGL: 100, volumeMl: 40 },
+    { id: "b2-8", date: "2026-04-17", personName: "大野", substanceName: "トリクロロ酢酸（TCA）", concentrationGL: 100, volumeMl: 300 },
+    { id: "b2-9", date: "2026-04-24", personName: "杉山", substanceName: "トリクロロ酢酸（TCA）", concentrationGL: 100, volumeMl: 200 },
+    { id: "b2-10", date: "2026-05-13", personName: "大野", substanceName: "トリクロロ酢酸（TCA）", concentrationGL: 100, volumeMl: 100 },
+    { id: "b2-11", date: "2026-05-17", personName: "木下", substanceName: "トリクロロ酢酸（TCA）", concentrationGL: 100, volumeMl: 4.5 },
+    { id: "b2-12", date: "2026-05-19", personName: "木下", substanceName: "トリクロロ酢酸（TCA）", concentrationGL: 100, volumeMl: 8 },
+    { id: "b2-13", date: "2026-07-09", personName: "藤井", substanceName: "トリクロロ酢酸（TCA）", concentrationGL: 100, volumeMl: 100 },
+    { id: "b2-14", date: "2025-12-23", personName: "清水", substanceName: "NBT", concentrationGL: 0.1, volumeMl: 250 },
+    { id: "b2-15", date: "2025-12-23", personName: "清水", substanceName: "NBT", concentrationGL: 16.34, volumeMl: 20 },
+    { id: "b2-16", date: "2025-12-23", personName: "清水", substanceName: "NBT", concentrationGL: 81.7, volumeMl: 10 },
+    { id: "b2-17", date: "2025-12-23", personName: "清水", substanceName: "NBT", concentrationGL: 81.7, volumeMl: 30 },
+    { id: "b2-18", date: "2025-12-23", personName: "清水", substanceName: "NBT", concentrationGL: 81.7, volumeMl: 15 },
+    { id: "b2-19", date: "2026-06-30", personName: "杉本", substanceName: "NBT", concentrationGL: 1.64, volumeMl: 10 },
+    { id: "b2-20", date: "2026-07-01", personName: "杉本", substanceName: "NBT", concentrationGL: 1.64, volumeMl: 10 },
+    { id: "b2-21", date: "2026-07-13", personName: "杉本", substanceName: "NBT", concentrationGL: 1.64, volumeMl: 40 },
+    { id: "b2-22", date: "2025-12-23", personName: "清水", substanceName: "BPB", concentrationGL: 0.1, volumeMl: 9 },
+    { id: "b2-23", date: "2025-12-23", personName: "清水", substanceName: "DAPI", concentrationGL: 0.0005, volumeMl: 80 },
+    { id: "b2-24", date: "2025-12-23", personName: "清水", substanceName: "CPPU", concentrationGL: 0.04, volumeMl: 60 },
+    { id: "b2-25", date: "2025-12-23", personName: "清水", substanceName: "IAA", concentrationGL: 26.25, volumeMl: 20 },
+  ]},
+  { id: "b5", code: "B-5", name: "炭化水素系溶媒類", note: "アルコール・エステル・ケトン・エタノール・エーテル・アルデヒド・ヘキサン・トルエン・キシレン・アセトン・メタノール・酢酸エチル等", color: C.teal, disposal: DISPOSAL_POLICY, tankStartDate: "2025-12-08", entries: [
+    { id: "b5-1", date: "2025-12-08", personName: "大野", substanceName: "エタノール", concentrationGL: 790, volumeMl: 50 },
+    { id: "b5-2", date: "2025-12-10", personName: "大野", substanceName: "エタノール", concentrationGL: 790, volumeMl: 100 },
+    { id: "b5-3", date: "2025-12-15", personName: "和田", substanceName: "エタノール", concentrationGL: 790, volumeMl: 50 },
+    { id: "b5-4", date: "2025-12-16", personName: "大野", substanceName: "エタノール", concentrationGL: 790, volumeMl: 30 },
+    { id: "b5-5", date: "2025-12-23", personName: "清水", substanceName: "エタノール", concentrationGL: 552, volumeMl: 170 },
+    { id: "b5-6", date: "2025-12-25", personName: "大野", substanceName: "エタノール", concentrationGL: 790, volumeMl: 200 },
+    { id: "b5-7", date: "2026-01-09", personName: "大野", substanceName: "エタノール", concentrationGL: 790, volumeMl: 80 },
+    { id: "b5-8", date: "2026-01-14", personName: "大野", substanceName: "エタノール", concentrationGL: 790, volumeMl: 80 },
+    { id: "b5-9", date: "2026-01-27", personName: "大野", substanceName: "エタノール", concentrationGL: 790, volumeMl: 200 },
+    { id: "b5-10", date: "2026-03-02", personName: "大野", substanceName: "エタノール", concentrationGL: 790, volumeMl: 120 },
+    { id: "b5-11", date: "2026-03-23", personName: "大野", substanceName: "エタノール", concentrationGL: 790, volumeMl: 200 },
+    { id: "b5-12", date: "2026-03-23", personName: "滿尾", substanceName: "エタノール", concentrationGL: 552, volumeMl: 50 },
+    { id: "b5-13", date: "2026-04-17", personName: "大野", substanceName: "エタノール", concentrationGL: 790, volumeMl: 20 },
+    { id: "b5-14", date: "2026-06-17", personName: "中村", substanceName: "エタノール", concentrationGL: 790, volumeMl: 180 },
+    { id: "b5-15", date: "2025-12-23", personName: "清水", substanceName: "アセトン", concentrationGL: 789, volumeMl: 48 },
+    { id: "b5-16", date: "2025-12-23", personName: "清水", substanceName: "アセトン", concentrationGL: 789, volumeMl: 40 },
+    { id: "b5-17", date: "2025-12-23", personName: "清水", substanceName: "ヘキサン", concentrationGL: 660, volumeMl: 74 },
+    { id: "b5-18", date: "2025-12-23", personName: "清水", substanceName: "メタノール", concentrationGL: 793, volumeMl: 335 },
+    { id: "b5-19", date: "2026-05-28", personName: "清水", substanceName: "PEG", concentrationGL: 0.0566, volumeMl: 150 },
+  ]},
+  { id: "b5f", code: "B-5ホ", name: "炭化水素系溶媒類（ホルムアルデヒド）", note: "ホルムアルデヒド（ホルマリン）", color: "#B97A6B", disposal: DISPOSAL_POLICY, tankStartDate: "2026-06-25", entries: [
+    { id: "b5f-1", date: "2026-06-25", personName: "杉山", substanceName: "ホルムアルデヒド", concentrationGL: 39.96, volumeMl: 500 },
+  ]},
+  { id: "a5strong", code: "A-5強", name: "強酸系廃液（pH2以下）", note: "廃酸溶液（HCl・H2SO4・HNO3の無機酸廃液）", color: "#8E3B33", disposal: DISPOSAL_POLICY, tankStartDate: null, entries: [] },
+];
+
+/* ------------------------------------------------------------------ */
+/*  ユーティリティ                                                      */
+/* ------------------------------------------------------------------ */
+
+function renderFormula(text) {
+  const nodes = [];
+  let i = 0;
+  while (i < text.length) {
+    const ch = text[i];
+    if (/[0-9]/.test(ch)) {
+      let j = i;
+      while (j < text.length && /[0-9]/.test(text[j])) j++;
+      const run = text.slice(i, j);
+      const prevChar = i > 0 ? text[i - 1] : null;
+      const isSubscript = !!prevChar && /[A-Za-z)\]]/.test(prevChar);
+      nodes.push(isSubscript ? <sub key={i}>{run}</sub> : <span key={i}>{run}</span>);
+      i = j;
+    } else {
+      nodes.push(<span key={i}>{ch}</span>);
+      i++;
+    }
+  }
+  return nodes;
+}
+
+function stockRatio(stock) {
+  return stock.capacity > 0 ? stock.amount / stock.capacity : 0;
+}
+
+function barColor(stock) {
+  const r = stockRatio(stock);
+  if (r <= 0.15) return C.danger;
+  if (r <= 0.4) return C.amberDeep;
+  return C.teal;
+}
+
+const STATUS_META = {
+  full: { label: "FULL", sub: "未開封", color: C.tealDeep, bg: C.okBg },
+  in_use: { label: "使用中", sub: "開封済み", color: C.ink, bg: "#E7EAE5" },
+  empty: { label: "空", sub: "廃棄待ち", color: C.danger, bg: C.dangerBg },
+};
+
+function autoStatus(stock) {
+  if (stock.amount <= 0) return "empty";
+  if (stock.amount >= stock.capacity) return "full";
+  return "in_use";
+}
+
+function summarizeEntries(entries) {
+  let totalVolumeMl = 0;
+  let totalMassG = 0;
+  entries.forEach((e) => {
+    const massG = e.concentrationGL * (e.volumeMl / 1000);
+    totalVolumeMl += e.volumeMl;
+    totalMassG += massG;
+  });
+  const aggregateGL = totalVolumeMl > 0 ? totalMassG / (totalVolumeMl / 1000) : 0;
+  return {
+    totalVolumeMl: Math.round(totalVolumeMl * 100) / 100,
+    aggregateGL: Math.round(aggregateGL * 1000) / 1000,
+  };
+}
+
+function groupBySubstance(entries) {
+  const map = new Map();
+  entries.forEach((e) => {
+    if (!map.has(e.substanceName)) map.set(e.substanceName, []);
+    map.get(e.substanceName).push(e);
+  });
+  return Array.from(map.entries()).map(([substanceName, list]) => ({
+    substanceName,
+    entries: list,
+    summary: summarizeEntries(list),
+  }));
+}
+
+function compareWasteCode(a, b) {
+  const parse = (code) => {
+    const m = code.match(/^([A-Za-z])-(\d+)(.*)$/);
+    if (!m) return { letter: code, num: 0, suffix: "" };
+    return { letter: m[1], num: parseInt(m[2], 10), suffix: m[3] || "" };
+  };
+  const suffixRank = { "強": 0, "有": 0, "弱": 1, "無": 1, "": 0, "ホ": 2 };
+  const pa = parse(a.code);
+  const pb = parse(b.code);
+  if (pa.letter !== pb.letter) return pa.letter < pb.letter ? -1 : 1;
+  if (pa.num !== pb.num) return pa.num - pb.num;
+  const ra = suffixRank[pa.suffix] ?? 9;
+  const rb = suffixRank[pb.suffix] ?? 9;
+  return ra - rb;
+}
+
+function slugify(name) {
+  return "loc_" + name.trim().toLowerCase().replace(/\s+/g, "_") + "_" + Math.random().toString(36).slice(2, 6);
+}
+
+/* ------------------------------------------------------------------ */
+/*  共通パーツ                                                          */
+/* ------------------------------------------------------------------ */
+
+function HazardStripe({ height = 6 }) {
+  return (
+    <div
+      style={{
+        height,
+        backgroundImage: `repeating-linear-gradient(135deg, ${C.amber} 0 10px, ${C.ink} 10px 20px)`,
+        opacity: 0.9,
+      }}
+    />
+  );
+}
+
+function TopBar({ title, onBack, right }) {
+  return (
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: 10,
+        padding: "14px 16px",
+        background: C.paper,
+        borderBottom: `1px solid ${C.line}`,
+        position: "sticky",
+        top: 0,
+        zIndex: 5,
+      }}
+    >
+      {onBack ? (
+        <button
+          onClick={onBack}
+          aria-label="戻る"
+          style={{ border: "none", background: "transparent", color: C.ink, cursor: "pointer", display: "flex", padding: 6, marginLeft: -6 }}
+        >
+          <ArrowLeft size={20} />
+        </button>
+      ) : (
+        <div style={{ width: 26, height: 26, borderRadius: 6, background: C.ink, display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <Beaker size={15} color={C.amber} />
+        </div>
+      )}
+      <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 17, color: C.ink, flex: 1, letterSpacing: 0.2 }}>
+        {title}
+      </div>
+      {right}
+    </div>
+  );
+}
+
+function FormulaTag({ formula, size = 14 }) {
+  return (
+    <span
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        fontFamily: "'IBM Plex Mono', monospace",
+        fontSize: size,
+        fontWeight: 600,
+        color: C.tealDeep,
+        background: "#E4EEEC",
+        border: `1px solid #C7DAD6`,
+        borderRadius: 5,
+        padding: "2px 7px",
+        lineHeight: 1.4,
+      }}
+    >
+      {renderFormula(formula)}
+    </span>
+  );
+}
+
+function SectionLabel({ children }) {
+  return (
+    <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: 1.2, color: C.inkSoft, textTransform: "uppercase", marginBottom: 8 }}>
+      {children}
+    </div>
+  );
+}
+
+function Chevron() {
+  return <ChevronRight size={18} color={C.inkSoft} />;
+}
+
+function AutoStatusBadge({ statusKey, size = "normal" }) {
+  const meta = STATUS_META[statusKey] || STATUS_META.in_use;
+  return (
+    <span
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 4,
+        fontSize: size === "small" ? 11 : 12,
+        fontWeight: 700,
+        color: meta.color,
+        background: meta.bg,
+        borderRadius: 20,
+        padding: size === "small" ? "3px 9px" : "5px 11px",
+        whiteSpace: "nowrap",
+      }}
+    >
+      <Lock size={size === "small" ? 9 : 10} />
+      {meta.label}
+    </span>
+  );
+}
+
+function LockedField({ label, value, unit }) {
+  return (
+    <div
+      style={{
+        background: C.lockBg,
+        border: `1px dashed ${C.line}`,
+        borderRadius: 10,
+        padding: "10px 13px",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+      }}
+    >
+      <span style={{ fontSize: 12.5, color: C.inkSoft, display: "flex", alignItems: "center", gap: 5 }}>
+        <Lock size={12} /> {label}
+      </span>
+      <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontWeight: 700, fontSize: 15, color: C.ink }}>
+        {value}
+        {unit && <span style={{ fontSize: 12, fontWeight: 500, color: C.inkSoft }}> {unit}</span>}
+      </span>
+    </div>
+  );
+}
+
+function WasteCodeTag({ waste, size = "normal" }) {
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+      <span
+        style={{
+          fontFamily: "'Space Grotesk', sans-serif",
+          fontWeight: 700,
+          fontSize: size === "large" ? 22 : size === "small" ? 13 : 16,
+          color: waste.color,
+        }}
+      >
+        {waste.code}
+      </span>
+      <span style={{ fontSize: size === "small" ? 10.5 : 11.5, color: C.inkSoft }}>{waste.name}</span>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  ホーム：検索タブ                                                    */
+/* ------------------------------------------------------------------ */
+
+function SearchTab({ chemicals, onSelect }) {
+  const [query, setQuery] = useState("");
+
+  const results = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return [];
+    return chemicals.filter((c) =>
+      [c.name, c.formula, c.location.name].join(" ").toLowerCase().includes(q)
+    );
+  }, [query, chemicals]);
+
+  return (
+    <div style={{ padding: "16px" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, background: C.paper, border: `1.5px solid ${C.line}`, borderRadius: 12, padding: "10px 12px" }}>
+        <Search size={18} color={C.inkSoft} />
+        <input
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="薬品名・場所・分子式で検索"
+          style={{ border: "none", outline: "none", background: "transparent", flex: 1, fontSize: 15, color: C.ink, fontFamily: "'Inter', sans-serif" }}
+        />
+        {query && (
+          <button onClick={() => setQuery("")} style={{ border: "none", background: "transparent", cursor: "pointer", display: "flex" }} aria-label="クリア">
+            <X size={16} color={C.inkSoft} />
+          </button>
+        )}
+      </div>
+
+      <div style={{ marginTop: 18 }}>
+        {!query && (
+          <div style={{ textAlign: "center", padding: "48px 12px", color: C.inkSoft }}>
+            <Search size={26} style={{ marginBottom: 10, opacity: 0.5 }} />
+            <div style={{ fontSize: 14, lineHeight: 1.7 }}>
+              薬品名・置き場所・分子式のいずれかを
+              <br />
+              入力すると候補が表示されます
+            </div>
+          </div>
+        )}
+
+        {query && results.length === 0 && (
+          <div style={{ textAlign: "center", padding: "48px 12px", color: C.inkSoft }}>
+            <AlertTriangle size={24} style={{ marginBottom: 10, opacity: 0.5 }} />
+            <div style={{ fontSize: 14 }}>「{query}」に一致する薬品が見つかりません</div>
+          </div>
+        )}
+
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {results.map((c) => {
+            const status = autoStatus(c.stock);
+            return (
+              <button
+                key={c.id}
+                onClick={() => onSelect(c)}
+                style={{ textAlign: "left", background: C.paper, border: `1px solid ${C.line}`, borderRadius: 12, padding: "12px 14px", cursor: "pointer", display: "flex", alignItems: "center", gap: 10 }}
+              >
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontWeight: 600, fontSize: 15, color: C.ink, fontFamily: "'Space Grotesk', sans-serif" }}>{c.name}</div>
+                  <div style={{ display: "flex", gap: 6, alignItems: "center", marginTop: 6, flexWrap: "wrap" }}>
+                    <FormulaTag formula={c.formula} size={12} />
+                    <span style={{ fontSize: 12, color: C.inkSoft, display: "flex", alignItems: "center", gap: 3 }}>
+                      <MapPin size={12} /> {c.location.name}
+                    </span>
+                  </div>
+                </div>
+                <AutoStatusBadge statusKey={status} size="small" />
+                <Chevron />
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  ホーム：場所タブ                                                    */
+/* ------------------------------------------------------------------ */
+
+function LocationTab({ chemicals, onOpenLocation }) {
+  const locations = useMemo(() => {
+    const map = new Map();
+    chemicals.forEach((c) => {
+      if (!map.has(c.location.id)) map.set(c.location.id, { ...c.location, items: [] });
+      map.get(c.location.id).items.push(c);
+    });
+    return Array.from(map.values());
+  }, [chemicals]);
+
+  return (
+    <div style={{ padding: 16 }}>
+      <SectionLabel>保管場所一覧</SectionLabel>
+      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        {locations.map((loc) => (
+          <button
+            key={loc.id}
+            onClick={() => onOpenLocation(loc)}
+            style={{ textAlign: "left", background: C.paper, border: `1px solid ${C.line}`, borderRadius: 12, padding: "13px 14px", display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}
+          >
+            <div style={{ width: 34, height: 34, borderRadius: 9, background: C.okBg, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+              <MapPin size={16} color={C.tealDeep} />
+            </div>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontWeight: 600, fontSize: 14.5, color: C.ink }}>{loc.name}</div>
+              <div style={{ fontSize: 12, color: C.inkSoft, marginTop: 2 }}>{loc.items.length}品目・{loc.note}</div>
+            </div>
+            <Chevron />
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  ホーム：在庫タブ                                                    */
+/* ------------------------------------------------------------------ */
+
+function InventoryTab({ chemicals, onRecord, onAdd, onDelete }) {
+  return (
+    <div style={{ padding: 16 }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+        <SectionLabel>在庫一覧（g表記）</SectionLabel>
+        <button
+          onClick={onAdd}
+          style={{ border: "none", background: C.ink, color: "#fff", fontSize: 12, fontWeight: 700, borderRadius: 8, padding: "7px 11px", cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}
+        >
+          <Plus size={13} /> 薬品を追加
+        </button>
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        {chemicals.map((c) => {
+          const status = autoStatus(c.stock);
+          const ratio = Math.max(0.02, Math.min(1, stockRatio(c.stock)));
+          return (
+            <div key={c.id} style={{ background: C.paper, border: `1px solid ${C.line}`, borderRadius: 12, padding: "12px 14px" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontWeight: 600, fontSize: 14.5, color: C.ink }}>{c.name}</div>
+                  <div style={{ fontSize: 12, color: C.inkSoft, marginTop: 3, fontFamily: "'IBM Plex Mono', monospace" }}>
+                    {c.stock.amount} / {c.stock.capacity} g
+                  </div>
+                </div>
+                <AutoStatusBadge statusKey={status} size="small" />
+              </div>
+              <div style={{ height: 6, borderRadius: 4, background: "#E7EAE5", marginTop: 10, overflow: "hidden" }}>
+                <div style={{ height: "100%", width: `${ratio * 100}%`, background: barColor(c.stock), borderRadius: 4 }} />
+              </div>
+              <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+                <button
+                  onClick={() => onRecord(c)}
+                  style={{ flex: 1, border: "none", background: C.ink, color: "#fff", fontSize: 12.5, fontWeight: 600, borderRadius: 8, padding: "8px 12px", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 5 }}
+                >
+                  <Package size={13} /> 記録する
+                </button>
+                {status === "empty" && (
+                  <button
+                    onClick={() => onDelete(c)}
+                    style={{ border: `1.5px solid ${C.danger}`, background: C.dangerBg, color: C.danger, fontSize: 12.5, fontWeight: 700, borderRadius: 8, padding: "8px 12px", cursor: "pointer", display: "flex", alignItems: "center", gap: 5 }}
+                  >
+                    <Trash2 size={13} /> 削除
+                  </button>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  ホーム：廃液タブ                                                    */
+/* ------------------------------------------------------------------ */
+
+function WasteTab({ wasteCategories, onOpenWaste, onOpenCalc }) {
+  const sorted = useMemo(() => [...wasteCategories].sort(compareWasteCode), [wasteCategories]);
+  return (
+    <div style={{ padding: 16 }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+        <SectionLabel>廃液分類一覧（タンク別）</SectionLabel>
+        <button
+          onClick={onOpenCalc}
+          style={{ border: `1.5px solid ${C.line}`, background: C.paper, color: C.ink, fontSize: 11.5, fontWeight: 700, borderRadius: 8, padding: "6px 10px", cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}
+        >
+          <Calculator size={13} /> g/L計算ツール
+        </button>
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        {sorted.map((w) => {
+          const sum = summarizeEntries(w.entries);
+          return (
+            <button
+              key={w.id}
+              onClick={() => onOpenWaste(w)}
+              style={{ textAlign: "left", background: C.paper, border: `1px solid ${C.line}`, borderRadius: 12, padding: 0, overflow: "hidden", cursor: "pointer", display: "flex" }}
+            >
+              <div style={{ width: 6, background: w.color, flexShrink: 0 }} />
+              <div style={{ flex: 1, padding: "13px 14px", display: "flex", alignItems: "center", gap: 10 }}>
+                <div style={{ flex: 1 }}>
+                  <WasteCodeTag waste={w} />
+                  <div style={{ fontSize: 12, color: C.inkSoft, marginTop: 6 }}>
+                    {w.entries.length}件の記録・合計 {sum.totalVolumeMl} mL
+                  </div>
+                </div>
+                <Chevron />
+              </div>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  薬品詳細ページ                                                      */
+/* ------------------------------------------------------------------ */
+
+function ChemicalDetail({ chemical, waste, onBack, onOpenLocation, onOpenWaste, onRecord, onDelete, onRecordWaste }) {
+  const status = autoStatus(chemical.stock);
+  const ratio = Math.max(0.02, Math.min(1, stockRatio(chemical.stock)));
+
+  return (
+    <div>
+      <TopBar title={chemical.name} onBack={onBack} />
+      <HazardStripe />
+      <div style={{ padding: 16 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 18 }}>
+          <FormulaTag formula={chemical.formula} size={16} />
+          <AutoStatusBadge statusKey={status} />
+        </div>
+
+        <SectionLabel>在庫状況（g）</SectionLabel>
+        <div style={{ background: C.paper, border: `1px solid ${C.line}`, borderRadius: 14, padding: 16, marginBottom: 20 }}>
+          <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 26, fontWeight: 600, color: C.ink }}>
+            {chemical.stock.amount}
+            <span style={{ fontSize: 14, color: C.inkSoft, fontWeight: 500 }}> / {chemical.stock.capacity} g</span>
+          </div>
+          <div style={{ height: 8, borderRadius: 5, background: "#E7EAE5", marginTop: 12, overflow: "hidden" }}>
+            <div style={{ height: "100%", width: `${ratio * 100}%`, background: barColor(chemical.stock), borderRadius: 5 }} />
+          </div>
+
+          <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
+            <button
+              onClick={() => onRecord(chemical)}
+              style={{ flex: 1, border: "none", background: C.ink, color: "#fff", fontSize: 14, fontWeight: 600, borderRadius: 10, padding: "12px", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}
+            >
+              <Package size={16} /> 使用量を記録する
+            </button>
+            {status === "empty" && (
+              <button
+                onClick={() => onDelete(chemical)}
+                style={{ border: `1.5px solid ${C.danger}`, background: C.dangerBg, color: C.danger, fontSize: 13, fontWeight: 700, borderRadius: 10, padding: "12px 14px", cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}
+              >
+                <Trash2 size={15} /> 削除
+              </button>
+            )}
+          </div>
+        </div>
+
+        <SectionLabel>保管場所</SectionLabel>
+        <button
+          onClick={() => onOpenLocation(chemical.location)}
+          style={{ width: "100%", textAlign: "left", background: C.paper, border: `1px solid ${C.line}`, borderRadius: 14, padding: "14px 16px", marginBottom: 20, cursor: "pointer", display: "flex", alignItems: "center", gap: 12 }}
+        >
+          <div style={{ width: 38, height: 38, borderRadius: 10, background: C.okBg, display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <MapPin size={18} color={C.tealDeep} />
+          </div>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontWeight: 600, fontSize: 15, color: C.ink }}>{chemical.location.name}</div>
+            <div style={{ fontSize: 12.5, color: C.inkSoft, marginTop: 2 }}>{chemical.location.note}</div>
+          </div>
+          <Chevron />
+        </button>
+
+        <SectionLabel>廃液分類</SectionLabel>
+        <button
+          onClick={() => onOpenWaste(waste)}
+          style={{ width: "100%", textAlign: "left", background: C.paper, border: `1px solid ${C.line}`, borderRadius: 14, padding: 0, overflow: "hidden", cursor: "pointer", display: "flex", marginBottom: 10 }}
+        >
+          <div style={{ width: 7, background: waste.color }} />
+          <div style={{ flex: 1, padding: "14px 16px", display: "flex", alignItems: "center", gap: 12 }}>
+            <Trash2 size={18} color={waste.color} />
+            <div style={{ flex: 1 }}>
+              <WasteCodeTag waste={waste} size="small" />
+            </div>
+            <Chevron />
+          </div>
+        </button>
+
+        <button
+          onClick={() => onRecordWaste(chemical, waste)}
+          style={{ width: "100%", border: `1.5px solid ${waste.color}`, background: "#fff", color: waste.color, fontSize: 14, fontWeight: 700, borderRadius: 12, padding: "12px", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}
+        >
+          <Plus size={16} /> この薬品の廃液を記録する
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  場所案内ページ                                                      */
+/* ------------------------------------------------------------------ */
+
+function LocationPage({ location, chemicals, onBack, onSelectChemical }) {
+  const items = chemicals.filter((c) => c.location.id === location.id);
+  return (
+    <div>
+      <TopBar title="場所案内" onBack={onBack} />
+      <div style={{ padding: 16 }}>
+        <div style={{ background: C.tealDeep, borderRadius: 16, padding: "22px 18px", color: "#fff", marginBottom: 20 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, opacity: 0.85, fontSize: 12, marginBottom: 6 }}>
+            <MapPin size={14} /> 保管場所
+          </div>
+          <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 22 }}>{location.name}</div>
+          <div style={{ fontSize: 13, marginTop: 8, opacity: 0.9 }}>{location.note}</div>
+        </div>
+
+        <SectionLabel>この場所に保管されている薬品（{items.length}）</SectionLabel>
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {items.map((c) => (
+            <button
+              key={c.id}
+              onClick={() => onSelectChemical(c)}
+              style={{ textAlign: "left", background: C.paper, border: `1px solid ${C.line}`, borderRadius: 12, padding: "12px 14px", display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}
+            >
+              <div style={{ flex: 1 }}>
+                <div style={{ fontWeight: 600, fontSize: 14.5, color: C.ink }}>{c.name}</div>
+                <div style={{ marginTop: 5 }}>
+                  <FormulaTag formula={c.formula} size={11.5} />
+                </div>
+              </div>
+              <Chevron />
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  廃液管理ページ                                                      */
+/* ------------------------------------------------------------------ */
+
+function WastePage({ waste, onBack, onOpenSubstance, onAddOther }) {
+  const groups = useMemo(() => groupBySubstance(waste.entries), [waste.entries]);
+  const tankVolume = useMemo(() => summarizeEntries(waste.entries).totalVolumeMl, [waste.entries]);
+
+  return (
+    <div>
+      <TopBar title="廃液管理" onBack={onBack} />
+      <div style={{ padding: 16, paddingBottom: 100 }}>
+        <div style={{ borderRadius: 16, padding: "20px 18px", color: "#fff", marginBottom: 14, background: waste.color }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, opacity: 0.85, fontSize: 12, marginBottom: 6 }}>
+            <Trash2 size={14} /> 廃液分類
+          </div>
+          <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 26 }}>{waste.code}</div>
+          <div style={{ fontSize: 14, marginTop: 4, opacity: 0.95 }}>{waste.name}</div>
+          {waste.note && <div style={{ fontSize: 12, marginTop: 8, opacity: 0.85, lineHeight: 1.6 }}>{waste.note}</div>}
+        </div>
+
+        <div style={{ display: "flex", alignItems: "center", gap: 8, background: C.paper, border: `1px solid ${C.line}`, borderRadius: 12, padding: "12px 14px", marginBottom: 12 }}>
+          <Calendar size={16} color={C.inkSoft} />
+          <span style={{ fontSize: 12.5, color: C.inkSoft }}>タンク使用開始日</span>
+          <span style={{ marginLeft: "auto", fontFamily: "'IBM Plex Mono', monospace", fontWeight: 700, color: C.ink }}>
+            {waste.tankStartDate || "未設定"}
+          </span>
+        </div>
+
+        <SectionLabel>処分方法</SectionLabel>
+        <div style={{ background: C.paper, border: `1px solid ${C.line}`, borderRadius: 14, padding: 16, fontSize: 14, lineHeight: 1.8, color: C.ink, marginBottom: 20 }}>
+          {waste.disposal}
+        </div>
+
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+          <SectionLabel>薬品ごとの記録（{groups.length}種）</SectionLabel>
+        </div>
+
+        {groups.length === 0 && (
+          <div style={{ textAlign: "center", padding: "30px 12px", color: C.inkSoft, fontSize: 13 }}>
+            まだ投入記録がありません。
+          </div>
+        )}
+
+        <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 20 }}>
+          {groups.map((g) => (
+            <button
+              key={g.substanceName}
+              onClick={() => onOpenSubstance(g.substanceName)}
+              style={{ textAlign: "left", background: C.paper, border: `1px solid ${C.line}`, borderRadius: 12, padding: "12px 14px", display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}
+            >
+              <div style={{ flex: 1 }}>
+                <div style={{ fontWeight: 600, fontSize: 14.5, color: C.ink }}>{renderFormula(g.substanceName)}</div>
+                <div style={{ fontSize: 12, color: C.inkSoft, marginTop: 3 }}>
+                  {g.entries.length}件・トータル {g.summary.aggregateGL} g/L・{g.summary.totalVolumeMl} mL
+                </div>
+              </div>
+              <Chevron />
+            </button>
+          ))}
+        </div>
+
+        <button
+          onClick={onAddOther}
+          style={{ width: "100%", border: `1.5px dashed ${C.line}`, background: "transparent", color: C.inkSoft, fontSize: 13, fontWeight: 600, borderRadius: 12, padding: "12px", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}
+        >
+          <Plus size={15} /> 一覧にない薬品の廃液を記録する
+        </button>
+      </div>
+
+      <div style={{ position: "sticky", bottom: 0, background: C.paper, borderTop: `1px solid ${C.line}`, padding: "14px 16px" }}>
+        <LockedField label="このタンクの合計使用量" value={tankVolume} unit="mL" />
+      </div>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  薬品ごとの廃液記録ページ                                             */
+/* ------------------------------------------------------------------ */
+
+function WasteSubstancePage({ waste, substanceName, onBack, onOpenEntry, onAddEntry }) {
+  const entries = useMemo(
+    () =>
+      waste.entries
+        .filter((e) => e.substanceName === substanceName)
+        .slice()
+        .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0)),
+    [waste.entries, substanceName]
+  );
+  const sum = summarizeEntries(entries);
+
+  return (
+    <div>
+      <TopBar title={renderFormula(substanceName)} onBack={onBack} />
+      <div style={{ padding: 16 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 18 }}>
+          <div style={{ width: 8, height: 8, borderRadius: 4, background: waste.color }} />
+          <span style={{ fontSize: 12.5, color: C.inkSoft }}>{waste.code}　{waste.name}</span>
+        </div>
+
+        <SectionLabel>この薬品のトータル（自動集計・編集不可）</SectionLabel>
+        <div style={{ display: "flex", gap: 10, marginBottom: 20 }}>
+          <div style={{ flex: 1 }}>
+            <LockedField label="トータル濃度" value={sum.aggregateGL} unit="g/L" />
+          </div>
+          <div style={{ flex: 1 }}>
+            <LockedField label="トータル使用量" value={sum.totalVolumeMl} unit="mL" />
+          </div>
+        </div>
+
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+          <SectionLabel>投入記録（{entries.length}件）</SectionLabel>
+          <button
+            onClick={onAddEntry}
+            style={{ border: "none", background: C.ink, color: "#fff", fontSize: 12, fontWeight: 700, borderRadius: 8, padding: "7px 11px", cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}
+          >
+            <Plus size={13} /> 記録を追加
+          </button>
+        </div>
+
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {entries.map((e) => (
+            <button
+              key={e.id}
+              onClick={() => onOpenEntry(e)}
+              style={{ textAlign: "left", background: C.paper, border: `1px solid ${C.line}`, borderRadius: 12, padding: "12px 14px", display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}
+            >
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 12, color: C.inkSoft, display: "flex", gap: 8, flexWrap: "wrap" }}>
+                  <span style={{ display: "flex", alignItems: "center", gap: 3 }}><Calendar size={11} /> {e.date}</span>
+                  <span style={{ display: "flex", alignItems: "center", gap: 3 }}><User size={11} /> {e.personName}</span>
+                </div>
+                <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 13.5, fontWeight: 700, color: C.ink, marginTop: 4 }}>
+                  {e.concentrationGL} g/L ・ {e.volumeMl} mL
+                </div>
+              </div>
+              <Chevron />
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  廃液・個別記録の詳細ページ                                            */
+/* ------------------------------------------------------------------ */
+
+function WasteEntryPage({ entry, waste, onBack, onDelete }) {
+  const substanceEntries = useMemo(
+    () => waste.entries.filter((e) => e.substanceName === entry.substanceName),
+    [waste.entries, entry.substanceName]
+  );
+  const sum = summarizeEntries(substanceEntries);
+
+  return (
+    <div>
+      <TopBar title="投入記録の詳細" onBack={onBack} />
+      <div style={{ padding: 16 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 18 }}>
+          <div style={{ width: 8, height: 8, borderRadius: 4, background: waste.color }} />
+          <span style={{ fontSize: 12.5, color: C.inkSoft }}>{waste.code}　{waste.name}</span>
+        </div>
+
+        <SectionLabel>薬品名</SectionLabel>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, background: C.paper, border: `1px solid ${C.line}`, borderRadius: 10, padding: "11px 14px", marginBottom: 16 }}>
+          <FlaskConical size={15} color={C.inkSoft} />
+          <span style={{ fontSize: 14.5, color: C.ink, fontWeight: 600 }}>{renderFormula(entry.substanceName)}</span>
+        </div>
+
+        <SectionLabel>日付</SectionLabel>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, background: C.paper, border: `1px solid ${C.line}`, borderRadius: 10, padding: "11px 14px", marginBottom: 16 }}>
+          <Calendar size={15} color={C.inkSoft} />
+          <span style={{ fontSize: 14.5, color: C.ink, fontWeight: 600 }}>{entry.date}</span>
+        </div>
+
+        <SectionLabel>氏名（記録者）</SectionLabel>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, background: C.paper, border: `1px solid ${C.line}`, borderRadius: 10, padding: "11px 14px", marginBottom: 16 }}>
+          <User size={15} color={C.inkSoft} />
+          <span style={{ fontSize: 14.5, color: C.ink, fontWeight: 600 }}>{entry.personName}</span>
+        </div>
+
+        <SectionLabel>濃度（g/L）</SectionLabel>
+        <div style={{ background: C.paper, border: `1px solid ${C.line}`, borderRadius: 10, padding: "11px 14px", marginBottom: 16, fontFamily: "'IBM Plex Mono', monospace", fontWeight: 700, fontSize: 15, color: C.ink }}>
+          {entry.concentrationGL} g/L
+        </div>
+
+        <SectionLabel>使用量</SectionLabel>
+        <div style={{ background: C.paper, border: `1px solid ${C.line}`, borderRadius: 10, padding: "11px 14px", marginBottom: 22, fontFamily: "'IBM Plex Mono', monospace", fontWeight: 700, fontSize: 15, color: C.ink }}>
+          {entry.volumeMl} mL
+        </div>
+
+        <SectionLabel>参考：「{renderFormula(entry.substanceName)}」のトータル（自動集計）</SectionLabel>
+        <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 26 }}>
+          <LockedField label="トータル濃度(g/L)" value={sum.aggregateGL} unit="g/L" />
+          <LockedField label="トータル使用量" value={sum.totalVolumeMl} unit="mL" />
+        </div>
+
+        <button
+          onClick={() => onDelete(waste.id, entry)}
+          style={{ width: "100%", border: `1.5px solid ${C.danger}`, background: C.dangerBg, color: C.danger, fontSize: 14, fontWeight: 700, borderRadius: 12, padding: "12px", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}
+        >
+          <Trash2 size={16} /> この記録を削除
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  廃液・投入記録の追加ページ                                            */
+/* ------------------------------------------------------------------ */
+
+function WasteEntryAddPage({ waste, lockedSubstanceName, onBack, onSave, onOpenCalc }) {
+  const today = new Date().toISOString().slice(0, 10);
+  const [date, setDate] = useState(today);
+  const [personName, setPersonName] = useState("");
+  const [substanceName, setSubstanceName] = useState("");
+  const [concentrationGL, setConcentrationGL] = useState("");
+  const [volumeMl, setVolumeMl] = useState("");
+
+  const finalSubstanceName = lockedSubstanceName || substanceName.trim();
+  const canSave = date && personName.trim() && finalSubstanceName && concentrationGL !== "" && volumeMl !== "";
+
+  const inputStyle = {
+    width: "100%",
+    border: `1.5px solid ${C.line}`,
+    borderRadius: 10,
+    padding: "10px 13px",
+    fontSize: 14.5,
+    color: C.ink,
+    fontFamily: "'Inter', sans-serif",
+    boxSizing: "border-box",
+  };
+
+  const handleSave = () => {
+    if (!canSave) return;
+    onSave(waste.id, {
+      id: "e_" + Date.now(),
+      date,
+      personName: personName.trim(),
+      substanceName: finalSubstanceName,
+      concentrationGL: parseFloat(concentrationGL),
+      volumeMl: parseFloat(volumeMl),
+    });
+  };
+
+  return (
+    <div>
+      <TopBar title="投入記録を追加" onBack={onBack} />
+      <div style={{ padding: 16 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 18 }}>
+          <div style={{ width: 8, height: 8, borderRadius: 4, background: waste.color }} />
+          <span style={{ fontSize: 12.5, color: C.inkSoft }}>{waste.code}　{waste.name}</span>
+        </div>
+
+        <div style={{ display: "flex", alignItems: "flex-start", gap: 8, background: C.okBg, border: `1px solid #C7DAD6`, borderRadius: 10, padding: "10px 13px", marginBottom: 20 }}>
+          <Info size={15} color={C.tealDeep} style={{ marginTop: 1, flexShrink: 0 }} />
+          <span style={{ fontSize: 12.5, color: C.tealDeep, lineHeight: 1.6 }}>
+            濃度は <b>g/L</b> でご記入ください。日付・氏名・使用量・濃度(g/L)はすべて必須項目です。
+          </span>
+        </div>
+
+        <SectionLabel>薬品名 {!lockedSubstanceName && <span style={{ color: C.danger }}>*</span>}</SectionLabel>
+        {lockedSubstanceName ? (
+          <div style={{ display: "flex", alignItems: "center", gap: 8, background: C.lockBg, border: `1px dashed ${C.line}`, borderRadius: 10, padding: "10px 13px", marginBottom: 16 }}>
+            <Lock size={13} color={C.inkSoft} />
+            <span style={{ fontSize: 14.5, fontWeight: 600, color: C.ink }}>{renderFormula(lockedSubstanceName)}</span>
+          </div>
+        ) : (
+          <input
+            style={{ ...inputStyle, marginBottom: 16 }}
+            value={substanceName}
+            onChange={(e) => setSubstanceName(e.target.value)}
+            placeholder="廃棄する薬品名を入力"
+          />
+        )}
+
+        <SectionLabel>日付 <span style={{ color: C.danger }}>*</span></SectionLabel>
+        <input type="date" style={{ ...inputStyle, marginBottom: 16, fontFamily: "'IBM Plex Mono', monospace" }} value={date} onChange={(e) => setDate(e.target.value)} />
+
+        <SectionLabel>氏名 <span style={{ color: C.danger }}>*</span></SectionLabel>
+        <input style={{ ...inputStyle, marginBottom: 16 }} value={personName} onChange={(e) => setPersonName(e.target.value)} placeholder="記録者の氏名" />
+
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <SectionLabel>濃度（g/L） <span style={{ color: C.danger }}>*</span></SectionLabel>
+          <button
+            onClick={onOpenCalc}
+            style={{ border: "none", background: "transparent", color: C.tealDeep, fontSize: 11.5, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: 3, marginBottom: 8 }}
+          >
+            <Calculator size={12} /> 計算ツールを使う
+          </button>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, background: C.paper, border: `1.5px solid ${C.line}`, borderRadius: 10, padding: "10px 13px", marginBottom: 16 }}>
+          <input
+            type="number"
+            inputMode="decimal"
+            value={concentrationGL}
+            onChange={(e) => setConcentrationGL(e.target.value)}
+            placeholder="0.0"
+            style={{ flex: 1, border: "none", outline: "none", background: "transparent", fontSize: 16, fontFamily: "'IBM Plex Mono', monospace", color: C.ink }}
+          />
+          <span style={{ fontSize: 13, color: C.inkSoft, fontWeight: 600 }}>g/L</span>
+        </div>
+
+        <SectionLabel>使用量（mL） <span style={{ color: C.danger }}>*</span></SectionLabel>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, background: C.paper, border: `1.5px solid ${C.line}`, borderRadius: 10, padding: "10px 13px", marginBottom: 24 }}>
+          <input
+            type="number"
+            inputMode="decimal"
+            value={volumeMl}
+            onChange={(e) => setVolumeMl(e.target.value)}
+            placeholder="0"
+            style={{ flex: 1, border: "none", outline: "none", background: "transparent", fontSize: 16, fontFamily: "'IBM Plex Mono', monospace", color: C.ink }}
+          />
+          <span style={{ fontSize: 13, color: C.inkSoft, fontWeight: 600 }}>mL</span>
+        </div>
+
+        <button
+          onClick={handleSave}
+          disabled={!canSave}
+          style={{ width: "100%", border: "none", background: canSave ? C.ink : "#B7C0BC", color: "#fff", fontSize: 15, fontWeight: 600, borderRadius: 12, padding: "13px", cursor: canSave ? "pointer" : "not-allowed", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}
+        >
+          <Save size={16} /> 記録する
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  g/L 換算計算ツール                                                  */
+/* ------------------------------------------------------------------ */
+
+function ConcentrationCalcPage({ onBack }) {
+  const [molarMass, setMolarMass] = useState("");
+  const [mol, setMol] = useState("");
+  const [volumeMl, setVolumeMl] = useState("");
+
+  const inputStyle = {
+    width: "100%",
+    border: `1.5px solid ${C.line}`,
+    borderRadius: 10,
+    padding: "10px 13px",
+    fontSize: 16,
+    color: C.ink,
+    fontFamily: "'IBM Plex Mono', monospace",
+    boxSizing: "border-box",
+  };
+
+  const mm = parseFloat(molarMass);
+  const n = parseFloat(mol);
+  const v = parseFloat(volumeMl);
+  const valid = !isNaN(mm) && !isNaN(n) && !isNaN(v) && v > 0;
+  const massG = valid ? mm * n : null;
+  const resultGL = valid ? Math.round(((massG / v) * 1000) * 1000) / 1000 : null;
+
+  return (
+    <div>
+      <TopBar title="g/L 計算ツール" onBack={onBack} />
+      <div style={{ padding: 16 }}>
+        <div style={{ display: "flex", alignItems: "flex-start", gap: 8, background: C.okBg, border: `1px solid #C7DAD6`, borderRadius: 10, padding: "10px 13px", marginBottom: 20 }}>
+          <Info size={15} color={C.tealDeep} style={{ marginTop: 1, flexShrink: 0 }} />
+          <span style={{ fontSize: 12.5, color: C.tealDeep, lineHeight: 1.6 }}>
+            分子量・物質量(mol)・体積(mL) から、廃液記録に入力する濃度(g/L)を計算します。
+          </span>
+        </div>
+
+        <SectionLabel>分子量（g/mol）</SectionLabel>
+        <input
+          type="number"
+          inputMode="decimal"
+          style={{ ...inputStyle, marginBottom: 16 }}
+          value={molarMass}
+          onChange={(e) => setMolarMass(e.target.value)}
+          placeholder="例：40.00（NaOH）"
+        />
+
+        <SectionLabel>物質量（mol）</SectionLabel>
+        <input
+          type="number"
+          inputMode="decimal"
+          style={{ ...inputStyle, marginBottom: 16 }}
+          value={mol}
+          onChange={(e) => setMol(e.target.value)}
+          placeholder="使用した物質量"
+        />
+
+        <SectionLabel>体積（mL）</SectionLabel>
+        <input
+          type="number"
+          inputMode="decimal"
+          style={{ ...inputStyle, marginBottom: 22 }}
+          value={volumeMl}
+          onChange={(e) => setVolumeMl(e.target.value)}
+          placeholder="溶かした先の体積"
+        />
+
+        <div
+          style={{
+            background: valid ? C.tealDeep : C.lockBg,
+            borderRadius: 14,
+            padding: "20px 18px",
+            textAlign: "center",
+          }}
+        >
+          <div style={{ fontSize: 12, color: valid ? "#fff" : C.inkSoft, opacity: valid ? 0.85 : 1, marginBottom: 6 }}>算出された濃度</div>
+          <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontWeight: 700, fontSize: 30, color: valid ? "#fff" : C.inkSoft }}>
+            {valid ? resultGL : "―"}
+            <span style={{ fontSize: 15, fontWeight: 500 }}> g/L</span>
+          </div>
+        </div>
+        <div style={{ fontSize: 11.5, color: C.inkSoft, marginTop: 10, textAlign: "center" }}>
+          この値を「投入記録を追加」の濃度(g/L)欄に入力してください
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  質量記録ページ                                                      */
+/* ------------------------------------------------------------------ */
+
+function RecordMassPage({ chemical, onBack, onSave }) {
+  const [mass, setMass] = useState("");
+  const [note, setNote] = useState("");
+  const [saved, setSaved] = useState(false);
+
+  const today = new Date().toLocaleDateString("ja-JP", { year: "numeric", month: "2-digit", day: "2-digit" });
+
+  const handleSave = () => {
+    const value = parseFloat(mass);
+    if (isNaN(value)) return;
+    onSave(chemical.id, value, note);
+    setSaved(true);
+    setTimeout(() => setSaved(false), 1600);
+    setMass("");
+    setNote("");
+  };
+
+  return (
+    <div>
+      <TopBar title="使用量の記録" onBack={onBack} />
+      <div style={{ padding: 16 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, background: C.paper, border: `1px solid ${C.line}`, borderRadius: 12, padding: "12px 14px", marginBottom: 20 }}>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontWeight: 600, fontSize: 15, color: C.ink }}>{chemical.name}</div>
+            <div style={{ marginTop: 5 }}>
+              <FormulaTag formula={chemical.formula} size={11.5} />
+            </div>
+          </div>
+          <div style={{ textAlign: "right" }}>
+            <div style={{ fontSize: 11, color: C.inkSoft }}>現在庫</div>
+            <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontWeight: 600, color: C.ink }}>{chemical.stock.amount} g</div>
+          </div>
+        </div>
+
+        <SectionLabel>記録日</SectionLabel>
+        <div style={{ fontSize: 14, color: C.inkSoft, marginBottom: 18 }}>{today}</div>
+
+        <SectionLabel>今回使用した質量</SectionLabel>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, background: C.paper, border: `1.5px solid ${C.line}`, borderRadius: 12, padding: "10px 14px", marginBottom: 6 }}>
+          <input
+            type="number"
+            inputMode="decimal"
+            value={mass}
+            onChange={(e) => setMass(e.target.value)}
+            placeholder="0.0"
+            style={{ flex: 1, border: "none", outline: "none", background: "transparent", fontSize: 20, fontFamily: "'IBM Plex Mono', monospace", color: C.ink }}
+          />
+          <span style={{ fontSize: 14, color: C.inkSoft, fontWeight: 600 }}>g</span>
+        </div>
+        <div style={{ fontSize: 11.5, color: C.inkSoft, marginBottom: 18 }}>
+          記録すると残量に応じて使用状況（FULL／使用中／空）が自動で切り替わります
+        </div>
+
+        <SectionLabel>メモ（任意）</SectionLabel>
+        <textarea
+          value={note}
+          onChange={(e) => setNote(e.target.value)}
+          placeholder="使用目的・実験名など"
+          rows={3}
+          style={{ width: "100%", border: `1px solid ${C.line}`, borderRadius: 12, padding: "10px 14px", fontSize: 14, fontFamily: "'Inter', sans-serif", color: C.ink, resize: "none", marginBottom: 22, boxSizing: "border-box" }}
+        />
+
+        <button
+          onClick={handleSave}
+          disabled={!mass}
+          style={{ width: "100%", border: "none", background: mass ? C.ink : "#B7C0BC", color: "#fff", fontSize: 15, fontWeight: 600, borderRadius: 12, padding: "13px", cursor: mass ? "pointer" : "not-allowed", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}
+        >
+          <Save size={16} /> 在庫を更新する
+        </button>
+
+        {saved && (
+          <div style={{ marginTop: 14, textAlign: "center", fontSize: 13, fontWeight: 600, color: C.tealDeep, background: C.okBg, borderRadius: 10, padding: "10px" }}>
+            記録しました。在庫を更新しました。
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  薬品追加ページ                                                      */
+/* ------------------------------------------------------------------ */
+
+function AddChemicalPage({ wasteCategories, onBack, onSave }) {
+  const [name, setName] = useState("");
+  const [formula, setFormula] = useState("");
+  const [locationName, setLocationName] = useState("");
+  const [locationNote, setLocationNote] = useState("");
+  const [capacity, setCapacity] = useState("");
+  const [wasteId, setWasteId] = useState(null);
+
+  const canSave = name.trim() && formula.trim() && locationName.trim() && capacity && wasteId;
+
+  const inputStyle = {
+    width: "100%",
+    border: `1.5px solid ${C.line}`,
+    borderRadius: 10,
+    padding: "10px 13px",
+    fontSize: 14.5,
+    color: C.ink,
+    fontFamily: "'Inter', sans-serif",
+    boxSizing: "border-box",
+  };
+
+  const handleSave = () => {
+    if (!canSave) return;
+    onSave({
+      name: name.trim(),
+      formula: formula.trim(),
+      locationName: locationName.trim(),
+      locationNote: locationNote.trim(),
+      capacity: parseFloat(capacity),
+      wasteId,
+    });
+  };
+
+  return (
+    <div>
+      <TopBar title="薬品を追加" onBack={onBack} />
+      <div style={{ padding: 16 }}>
+        <SectionLabel>薬品名</SectionLabel>
+        <input style={{ ...inputStyle, marginBottom: 16 }} value={name} onChange={(e) => setName(e.target.value)} placeholder="例：メタノール" />
+
+        <SectionLabel>分子式</SectionLabel>
+        <input style={{ ...inputStyle, marginBottom: 16, fontFamily: "'IBM Plex Mono', monospace" }} value={formula} onChange={(e) => setFormula(e.target.value)} placeholder="例：CH3OH" />
+
+        <SectionLabel>保管場所名</SectionLabel>
+        <input style={{ ...inputStyle, marginBottom: 10 }} value={locationName} onChange={(e) => setLocationName(e.target.value)} placeholder="例：薬品庫A 棚1" />
+        <input style={{ ...inputStyle, marginBottom: 16 }} value={locationNote} onChange={(e) => setLocationNote(e.target.value)} placeholder="場所の補足（任意）" />
+
+        <SectionLabel>容量（未開封時の量・g）</SectionLabel>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, background: C.paper, border: `1.5px solid ${C.line}`, borderRadius: 10, padding: "10px 13px", marginBottom: 8 }}>
+          <input
+            type="number"
+            inputMode="decimal"
+            value={capacity}
+            onChange={(e) => setCapacity(e.target.value)}
+            placeholder="0"
+            style={{ flex: 1, border: "none", outline: "none", background: "transparent", fontSize: 16, fontFamily: "'IBM Plex Mono', monospace", color: C.ink }}
+          />
+          <span style={{ fontSize: 13, color: C.inkSoft, fontWeight: 600 }}>g</span>
+        </div>
+        <div style={{ fontSize: 11.5, color: C.inkSoft, marginBottom: 20 }}>
+          新規追加時は未開封として登録され、使用状況は自動的に「FULL」になります
+        </div>
+
+        <SectionLabel>廃液分類（この薬品を使い終えた時の廃棄区分）</SectionLabel>
+        <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 26 }}>
+          {[...wasteCategories].sort(compareWasteCode).map((w) => {
+            const active = wasteId === w.id;
+            return (
+              <button
+                key={w.id}
+                onClick={() => setWasteId(w.id)}
+                style={{
+                  textAlign: "left",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 10,
+                  border: `1.5px solid ${active ? w.color : C.line}`,
+                  background: active ? "#fff" : C.paper,
+                  borderRadius: 10,
+                  padding: "11px 13px",
+                  cursor: "pointer",
+                }}
+              >
+                <div style={{ flex: 1 }}>
+                  <WasteCodeTag waste={w} size="small" />
+                </div>
+                {active && <Check size={16} color={w.color} />}
+              </button>
+            );
+          })}
+        </div>
+
+        <button
+          onClick={handleSave}
+          disabled={!canSave}
+          style={{ width: "100%", border: "none", background: canSave ? C.ink : "#B7C0BC", color: "#fff", fontSize: 15, fontWeight: 600, borderRadius: 12, padding: "13px", cursor: canSave ? "pointer" : "not-allowed", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}
+        >
+          <Plus size={16} /> 追加する
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Firestore ヘルパー                                                  */
+/* ------------------------------------------------------------------ */
+
+async function seedIfEmpty() {
+  const snap = await getDocs(collection(db, "chemicals"));
+  if (!snap.empty) return;
+  const batch = writeBatch(db);
+  initialChemicals.forEach((c) => batch.set(doc(db, "chemicals", c.id), c));
+  initialWasteCategories.forEach((w) => batch.set(doc(db, "wasteCategories", w.id), w));
+  await batch.commit();
+}
+
+/* ------------------------------------------------------------------ */
+/*  アプリ本体                                                         */
+/* ------------------------------------------------------------------ */
+
+const TABS = [
+  { key: "search", label: "検索", icon: Search },
+  { key: "location", label: "場所", icon: MapPin },
+  { key: "inventory", label: "在庫", icon: Package },
+  { key: "waste", label: "廃液", icon: Trash2 },
+];
+
+function ChemStockApp() {
+  const [chemicals, setChemicals] = useState([]);
+  const [wasteCategories, setWasteCategories] = useState([]);
+  const [ready, setReady] = useState(false);
+  const [homeTab, setHomeTab] = useState("search");
+  const [stack, setStack] = useState([{ view: "home" }]);
+
+  useEffect(() => {
+    let unsubChem = () => {};
+    let unsubWaste = () => {};
+    const unsubAuth = onAuthStateChanged(auth, async (user) => {
+      if (!user) {
+        signInAnonymously(auth).catch((e) => console.error("anon sign-in failed", e));
+        return;
+      }
+      try {
+        await seedIfEmpty();
+      } catch (e) {
+        console.error("seed failed", e);
+      }
+      unsubChem = onSnapshot(collection(db, "chemicals"), (snap) => {
+        setChemicals(snap.docs.map((d) => ({ ...d.data(), id: d.id })));
+        setReady(true);
+      });
+      unsubWaste = onSnapshot(collection(db, "wasteCategories"), (snap) => {
+        setWasteCategories(snap.docs.map((d) => ({ ...d.data(), id: d.id })));
+      });
+    });
+    return () => {
+      unsubAuth();
+      unsubChem();
+      unsubWaste();
+    };
+  }, []);
+
+  const current = stack[stack.length - 1];
+
+  const push = (entry) => setStack((s) => [...s, entry]);
+  const pop = () => setStack((s) => (s.length > 1 ? s.slice(0, -1) : s));
+  const goHome = (tab) => {
+    setStack([{ view: "home" }]);
+    if (tab) setHomeTab(tab);
+  };
+
+  const handleSaveMass = async (chemId, used) => {
+    const chem = chemicals.find((c) => c.id === chemId);
+    if (!chem) return;
+    const newAmount = Math.max(0, +(chem.stock.amount - used).toFixed(2));
+    await updateDoc(doc(db, "chemicals", chemId), { "stock.amount": newAmount });
+  };
+
+  const handleAddChemical = async ({ name, formula, locationName, locationNote, capacity, wasteId }) => {
+    const existingLoc = chemicals.find((c) => c.location.name.trim() === locationName)?.location;
+    const location = existingLoc || { id: slugify(locationName), name: locationName, note: locationNote || "" };
+    const newId = "c_" + Date.now();
+    const newChem = {
+      id: newId,
+      name,
+      formula,
+      location,
+      stock: { amount: capacity, capacity, unit: "g" },
+      wasteId,
+    };
+    await setDoc(doc(db, "chemicals", newId), newChem);
+    goHome("inventory");
+  };
+
+  const handleDeleteChemical = async (chem) => {
+    if (typeof window !== "undefined" && window.confirm) {
+      if (!window.confirm(`「${chem.name}」を薬品一覧から削除しますか？`)) return;
+    }
+    await deleteDoc(doc(db, "chemicals", chem.id));
+    pop();
+  };
+
+  const handleAddWasteEntry = async (wasteId, entry) => {
+    const w = wasteCategories.find((x) => x.id === wasteId);
+    if (!w) return;
+    const newEntries = [...w.entries, entry];
+    const newTankStartDate = w.tankStartDate || entry.date;
+    await updateDoc(doc(db, "wasteCategories", wasteId), { entries: newEntries, tankStartDate: newTankStartDate });
+    pop();
+  };
+
+  const handleDeleteWasteEntry = async (wasteId, entry) => {
+    if (typeof window !== "undefined" && window.confirm) {
+      if (!window.confirm(`${entry.date}・${entry.personName}の記録（${entry.substanceName}）を削除しますか？`)) return;
+    }
+    const w = wasteCategories.find((x) => x.id === wasteId);
+    if (!w) return;
+    const newEntries = w.entries.filter((e) => e.id !== entry.id);
+    await updateDoc(doc(db, "wasteCategories", wasteId), { entries: newEntries });
+    pop();
+  };
+
+  const findChem = (id) => chemicals.find((c) => c.id === id);
+  const findWaste = (id) => wasteCategories.find((w) => w.id === id);
+
+  if (!ready) {
+    return (
+      <div style={{ fontFamily: "'Inter', sans-serif", background: C.bg, minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", color: C.inkSoft, fontSize: 14 }}>
+        <style>{FONT_IMPORT}</style>
+        読み込み中...
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ fontFamily: "'Inter', sans-serif", background: C.bg, minHeight: "100vh", display: "flex", justifyContent: "center" }}>
+      <style>{FONT_IMPORT}</style>
+      <div style={{ width: "100%", maxWidth: 460, minHeight: "100vh", background: C.bg, display: "flex", flexDirection: "column" }}>
+        {current.view === "home" && (
+          <>
+            <TopBar title="薬品在庫・廃液管理" />
+            <HazardStripe height={4} />
+
+            <div style={{ display: "flex", gap: 6, padding: "12px 16px 0 16px" }}>
+              {TABS.map((t) => {
+                const active = homeTab === t.key;
+                const Icon = t.icon;
+                return (
+                  <button
+                    key={t.key}
+                    onClick={() => setHomeTab(t.key)}
+                    style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 4, padding: "9px 4px", borderRadius: 10, border: "none", cursor: "pointer", background: active ? C.ink : "transparent", color: active ? "#fff" : C.inkSoft, fontSize: 11.5, fontWeight: 600, transition: "background 0.15s" }}
+                  >
+                    <Icon size={16} />
+                    {t.label}
+                  </button>
+                );
+              })}
+            </div>
+
+            <div style={{ flex: 1, overflowY: "auto" }}>
+              {homeTab === "search" && <SearchTab chemicals={chemicals} onSelect={(c) => push({ view: "detail", id: c.id })} />}
+              {homeTab === "location" && <LocationTab chemicals={chemicals} onOpenLocation={(loc) => push({ view: "location", loc })} />}
+              {homeTab === "inventory" && (
+                <InventoryTab
+                  chemicals={chemicals}
+                  onRecord={(c) => push({ view: "record", id: c.id })}
+                  onAdd={() => push({ view: "addChemical" })}
+                  onDelete={handleDeleteChemical}
+                />
+              )}
+              {homeTab === "waste" && (
+                <WasteTab
+                  wasteCategories={wasteCategories}
+                  onOpenWaste={(w) => push({ view: "waste", wasteId: w.id })}
+                  onOpenCalc={() => push({ view: "calc" })}
+                />
+              )}
+            </div>
+          </>
+        )}
+
+        {current.view === "detail" && (
+          <ChemicalDetail
+            chemical={findChem(current.id)}
+            waste={findWaste(findChem(current.id).wasteId)}
+            onBack={pop}
+            onOpenLocation={(loc) => push({ view: "location", loc })}
+            onOpenWaste={(w) => push({ view: "waste", wasteId: w.id })}
+            onRecord={(c) => push({ view: "record", id: c.id })}
+            onDelete={handleDeleteChemical}
+            onRecordWaste={(c, w) => push({ view: "wasteEntryAdd", wasteId: w.id, lockedSubstanceName: c.name })}
+          />
+        )}
+
+        {current.view === "location" && (
+          <LocationPage location={current.loc} chemicals={chemicals} onBack={pop} onSelectChemical={(c) => push({ view: "detail", id: c.id })} />
+        )}
+
+        {current.view === "waste" && (
+          <WastePage
+            waste={findWaste(current.wasteId)}
+            onBack={pop}
+            onOpenSubstance={(substanceName) => push({ view: "wasteSubstance", wasteId: current.wasteId, substanceName })}
+            onAddOther={() => push({ view: "wasteEntryAdd", wasteId: current.wasteId })}
+          />
+        )}
+
+        {current.view === "wasteSubstance" && (
+          <WasteSubstancePage
+            waste={findWaste(current.wasteId)}
+            substanceName={current.substanceName}
+            onBack={pop}
+            onOpenEntry={(e) => push({ view: "wasteEntry", wasteId: current.wasteId, entryId: e.id })}
+            onAddEntry={() => push({ view: "wasteEntryAdd", wasteId: current.wasteId, lockedSubstanceName: current.substanceName })}
+          />
+        )}
+
+        {current.view === "wasteEntry" && (
+          <WasteEntryPage
+            waste={findWaste(current.wasteId)}
+            entry={findWaste(current.wasteId).entries.find((e) => e.id === current.entryId)}
+            onBack={pop}
+            onDelete={handleDeleteWasteEntry}
+          />
+        )}
+
+        {current.view === "wasteEntryAdd" && (
+          <WasteEntryAddPage
+            waste={findWaste(current.wasteId)}
+            lockedSubstanceName={current.lockedSubstanceName}
+            onBack={pop}
+            onSave={handleAddWasteEntry}
+            onOpenCalc={() => push({ view: "calc" })}
+          />
+        )}
+
+        {current.view === "calc" && <ConcentrationCalcPage onBack={pop} />}
+
+        {current.view === "record" && <RecordMassPage chemical={findChem(current.id)} onBack={pop} onSave={handleSaveMass} />}
+
+        {current.view === "addChemical" && (
+          <AddChemicalPage wasteCategories={wasteCategories} onBack={pop} onSave={handleAddChemical} />
+        )}
+      </div>
+    </div>
+  );
+}
+
+const root = ReactDOM.createRoot(document.getElementById("root"));
+root.render(<ChemStockApp />);
+</script>
+</body>
+</html>
