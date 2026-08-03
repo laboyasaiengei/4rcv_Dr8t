@@ -21,15 +21,35 @@
      Babel-in-browser構成でもそのまま呼び出せる) -->
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 
 <style>
   html, body { margin: 0; padding: 0; background: #EEF1EC; -webkit-tap-highlight-color: transparent; }
   * { box-sizing: border-box; }
   input, textarea { font-family: inherit; }
+  #boot-error { display: none; }
 </style>
 </head>
 <body>
+<!-- Reactが立ち上がる前に致命的なエラーが起きても、画面が真っ白にならないようにするための安全網。
+     Reactのマウントに成功したら自動で非表示になる（下の script で消す）。 -->
+<div id="boot-error" style="font-family: sans-serif; max-width: 480px; margin: 40px auto; padding: 20px; background: #F6E4E1; border: 1px solid #B23B31; border-radius: 12px; color: #182524;">
+  <strong>読み込みエラーが発生しました。</strong>
+  <p id="boot-error-message" style="white-space: pre-wrap; word-break: break-word; font-size: 13px;"></p>
+  <p style="font-size: 12px; color: #4E625E;">ブラウザの開発者ツール（コンソール）に詳細が出ています。ネットワーク接続や広告ブロッカーが原因で、React・Babel・Firebaseの読み込み自体に失敗している可能性があります。</p>
+</div>
 <div id="root"></div>
+
+<script>
+  window.addEventListener('error', function (e) {
+    var box = document.getElementById('boot-error');
+    var msg = document.getElementById('boot-error-message');
+    if (box && msg && !document.getElementById('root').hasChildNodes()) {
+      box.style.display = 'block';
+      msg.textContent = (e.message || 'unknown error') + '\n' + (e.filename || '') + ':' + (e.lineno || '');
+    }
+  });
+</script>
 
 <script type="text/babel" data-presets="react">
 const { useState, useMemo } = React;
@@ -330,8 +350,36 @@ const firebaseConfig = {
   appId: "1:347752460271:web:b98500942e7308afeb101a",
 };
 
-firebase.initializeApp(firebaseConfig);
-const db = firebase.firestore();
+let db = null;
+let firebaseInitError = null;
+try {
+  firebase.initializeApp(firebaseConfig);
+  db = firebase.firestore();
+} catch (err) {
+  firebaseInitError = err;
+  console.error("Firebase init failed", err);
+}
+
+// Firestoreのルールを「ログイン済みのみ許可」にするための最低限のログイン。
+// 画面上にログインUIは出さず、開いたら自動で匿名サインインする。
+function ensureSignedIn() {
+  return new Promise((resolve, reject) => {
+    if (!window.firebase || !firebase.auth) {
+      reject(new Error("firebase.auth が読み込まれていません"));
+      return;
+    }
+    firebase.auth().onAuthStateChanged((user) => {
+      if (user) {
+        resolve(user);
+      } else {
+        firebase
+          .auth()
+          .signInAnonymously()
+          .catch(reject);
+      }
+    }, reject);
+  });
+}
 
 // 初回アクセス時だけ、モックデータをFirestoreに書き込む。
 // meta/status ドキュメントの有無で「初回かどうか」を判定するので、
@@ -1599,33 +1647,53 @@ function ChemStockApp() {
   const [wasteMeta, setWasteMeta] = useState([]);
   const [wasteEntriesRaw, setWasteEntriesRaw] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [fatalError, setFatalError] = useState(firebaseInitError ? String(firebaseInitError.message || firebaseInitError) : null);
   const [homeTab, setHomeTab] = useState("search");
   const [stack, setStack] = useState([{ view: "home" }]);
 
-  // Firestoreへの接続・購読。初回だけモックデータを流し込んでから購読を始める。
+  // ログイン（匿名）→ 初回だけモックデータを流し込み → Firestore購読、の順で立ち上げる。
+  // どこで失敗しても画面が真っ白にならないよう、必ずエラーを画面に出す。
   useEffect(() => {
+    if (firebaseInitError) return;
     let unsubChem, unsubWaste, unsubEntries;
     let cancelled = false;
 
-    seedIfNeeded()
-      .catch((err) => console.error("seed failed", err))
-      .finally(() => {
+    ensureSignedIn()
+      .then(() => seedIfNeeded())
+      .then(() => {
         if (cancelled) return;
         unsubChem = db.collection("chemicals").onSnapshot(
           (snap) => {
             setChemicals(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
             setLoading(false);
           },
-          (err) => console.error("chemicals subscription error", err)
+          (err) => {
+            console.error("chemicals subscription error", err);
+            setFatalError("薬品データの取得に失敗しました：" + err.message);
+            setLoading(false);
+          }
         );
         unsubWaste = db.collection("wasteCategories").onSnapshot(
           (snap) => setWasteMeta(snap.docs.map((d) => ({ id: d.id, ...d.data() }))),
-          (err) => console.error("wasteCategories subscription error", err)
+          (err) => {
+            console.error("wasteCategories subscription error", err);
+            setFatalError("廃液分類データの取得に失敗しました：" + err.message);
+          }
         );
         unsubEntries = db.collection("wasteEntries").onSnapshot(
           (snap) => setWasteEntriesRaw(snap.docs.map((d) => ({ id: d.id, ...d.data() }))),
-          (err) => console.error("wasteEntries subscription error", err)
+          (err) => {
+            console.error("wasteEntries subscription error", err);
+            setFatalError("廃液記録データの取得に失敗しました：" + err.message);
+          }
         );
+      })
+      .catch((err) => {
+        console.error("startup failed", err);
+        if (!cancelled) {
+          setFatalError("起動処理に失敗しました：" + (err.message || String(err)));
+          setLoading(false);
+        }
       });
 
     return () => {
@@ -1698,6 +1766,23 @@ function ChemStockApp() {
 
   const findChem = (id) => chemicals.find((c) => c.id === id);
   const findWaste = (id) => wasteCategories.find((w) => w.id === id);
+
+  if (fatalError) {
+    return (
+      <div style={{ fontFamily: "'Inter', sans-serif", background: C.bg, minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
+        <style>{FONT_IMPORT}</style>
+        <div style={{ maxWidth: 420, background: C.dangerBg, border: `1px solid ${C.danger}`, borderRadius: 14, padding: 20 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, color: C.danger, fontWeight: 700, marginBottom: 8 }}>
+            <AlertTriangle size={18} /> 読み込みエラー
+          </div>
+          <div style={{ fontSize: 13, color: C.ink, lineHeight: 1.7, wordBreak: "break-word" }}>{fatalError}</div>
+          <div style={{ fontSize: 12, color: C.inkSoft, marginTop: 12, lineHeight: 1.6 }}>
+            多くの場合、Firestoreのセキュリティルールやプロジェクト設定が原因です。ブラウザの開発者ツール（コンソール）にも詳細が出ています。
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (loading) {
     return (
@@ -1824,6 +1909,7 @@ function ChemStockApp() {
 }
 
 ReactDOM.createRoot(document.getElementById('root')).render(<ChemStockApp />);
+document.getElementById('boot-error').style.display = 'none';
 </script>
 </body>
 </html>
