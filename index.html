@@ -2,80 +2,63 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1" />
 <title>薬品在庫・廃液管理</title>
-<script type="importmap">
-{
-  "imports": {
-    "react": "https://esm.sh/react@18.2.0",
-    "react-dom/client": "https://esm.sh/react-dom@18.2.0/client",
-    "lucide-react": "https://esm.sh/lucide-react@0.383.0?external=react"
-  }
-}
-</script>
-<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+<link rel="icon" type="image/png" sizes="32x32" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAMAAABEpIrGAAAAP1BMVEXhoTIXIyOxOjEBAwNjUSihXS7foTLfoTLjozOxrp/KczL/qlWwhS8UIyMXJSVAPicAAAAAAAAAAAAAAAAAAAAwtXwIAAAAEHRSTlP+/f8D//8eVI///wP/Vo7/NCMKFgAAAIdJREFUeNrVk0sSgCAMQ1NrEQX1/rcVHEdFS9m48W0T0s9QcGDnoeJdEhF4QJWBAyw9O+Bg4uBtw1MeE+aDnqj/v2ElWi1dKCGGgXbMDjLVLiIdRDugGjF1J5M+wmWQRoAe0RVoBe4llCLlAuW9LSkMUfAdzW/fPJzm6YFnqjJnHcyLLi+cxA3cxwL6SYTPRQAAAABJRU5ErkJggg==" />
+<link rel="apple-touch-icon" sizes="180x180" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAALQAAAC0CAMAAAAKE/YAAAAAP1BMVEXhoTMYJSOxOjEAAAC2WjD6+vfmpTJeLyrjojJbTijiojL//wD7fwz/qlXIajKprq0AAAAAAAAAAAAAAAAAAABM4AWNAAAAEHRSTlP+/v8A//8a/6z/ZwECA///I914hwAAAy5JREFUeNrt3clu4zAQBNDmMhxSpDT//7dDOk4ga/MSLl1A18FwfPFLoSkFEiKSOUl0Mb86N3nvqWPy103O/QAOQ8cfp/J5BtOgZHjBpTfQaR4qXrnn9CI6FvJg8d1d2PEVNBvyD/spmuY8GMQoeUhmukbnEWJFvrFvrHP0bBI7c1anzYjQo5nPNG8mez5DO+OIaTLtGM3YvFEThvlRTat5JuKtnrfoyN1c1PERTfzNRU1rdP7A80f7XOwKncxEAJnup0b6eoEwFzV9o2NyBBKX4h3tUIouVbsvdIwwReeqY7yhnfE4aF+qJpOQii5Vp4yekYouVc+GooEq+nY2z3VPWOgpj3OekLr5s0vlLyhXkhwa2jU4gzdH53N58mhon6j6saM5OpOro//tUh9d/YCndql+0COPh/aC7oYmPDQJWtCCFrSgBS1oQQta0IIWtKAFLWhBC1rQgha0oAW9jd2jLXt02KMDYNH8q1aHgRsO/gOiFF7V4QwdwFYh97WoLgI3HJwHRCm8qsM1OoCtQr5rUT0NYNEcB0QpvKrDK+gAWDS3tRheQyuwVcivavVy8IaD1VpUCq/q8A46ABbNZS2qNwN1uOM0IErhVR3eRwfAosevxfAJWoGtQg4D8vfDjDQv+sOMnGr9cQZO9OdoC1j0OLX9DVqDrcKRVetfBrDoMVVrjae2gOhFazy1rYHWgEX3rlprPLWthdZww9G36npF96u6YtH9qtZVs+AV3WlAapu7VG1rozVg0T3Wom6QBa/o9lVrjVe1bYPWcMPRuurvou1i62RpP9ah/vXl0PySNSTatkM3vMzeDt3hbkV1dNP7GaERuu0ZMTRBt/6DKdRH97jXFUJVNPt/c5BIJMfxiGRB90JPeOiJHB7aYaIT3FD7RAZuqCeMrRg202HqP8q5eUzCfGg25OPJIR8Ej/nIfcjNDTC3kYDcsANzaxTITWgwt/vB3FgJcgsrzM3CMLdlK+9IMQ49UNdv+Zq30nX4mk+3z8w/EM/R2Dk3vwVL87PNd4m9+XBvZuJNPtsFmziTT5rmwqYL4Al7sJvokneacW66dpknKaf9vlx6avoPX6o8DNRGEnUAAAAASUVORK5CYII=" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="薬品在庫・廃液管理" />
+<meta name="theme-color" content="#182524" />
+<meta name="mobile-web-app-capable" content="yes" />
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.24.7/babel.min.js"></script>
+
+<style>
+  html, body { margin: 0; padding: 0; background: #EEF1EC; -webkit-tap-highlight-color: transparent; }
+  * { box-sizing: border-box; }
+  input, textarea { font-family: inherit; }
+</style>
 </head>
-<body style="margin:0;padding:0;">
+<body>
 <div id="root"></div>
 
-<script type="text/babel" data-type="module" data-presets="react">
-import React, { useState, useMemo, useEffect } from "react";
-import ReactDOM from "react-dom/client";
-import {
-  Search,
-  MapPin,
-  Beaker,
-  Trash2,
-  ChevronRight,
-  ArrowLeft,
-  Save,
-  AlertTriangle,
-  Package,
-  X,
-  Lock,
-  Calendar,
-  User,
-  FlaskConical,
-  Plus,
-  Check,
-  Calculator,
-  Info,
-} from "lucide-react";
+<script type="text/babel" data-presets="react">
+const { useState, useMemo } = React;
 
-import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-import {
-  getFirestore,
-  collection,
-  doc,
-  getDocs,
-  setDoc,
-  updateDoc,
-  deleteDoc,
-  onSnapshot,
-  writeBatch,
-} from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-import {
-  getAuth,
-  signInAnonymously,
-  onAuthStateChanged,
-} from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+/* 簡易アイコンセット（lucide-react相当のグリフをSVGで再現） */
+function IconBase({ size = 18, color = "currentColor", children, style }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color}
+      strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={style}>
+      {children}
+    </svg>
+  );
+}
+function Search(props) { return (<IconBase {...props}><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></IconBase>); }
+function MapPin(props) { return (<IconBase {...props}><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></IconBase>); }
+function Beaker(props) { return (<IconBase {...props}><path d="M9 3h6M10 3v6.5L4.6 18.4A2 2 0 0 0 6.3 21h11.4a2 2 0 0 0 1.7-2.6L14 9.5V3"/></IconBase>); }
+function Trash2(props) { return (<IconBase {...props}><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m2 0v14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V6h12z"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></IconBase>); }
+function ChevronRight(props) { return (<IconBase {...props}><polyline points="9 18 15 12 9 6"/></IconBase>); }
+function ArrowLeft(props) { return (<IconBase {...props}><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></IconBase>); }
+function Save(props) { return (<IconBase {...props}><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></IconBase>); }
+function AlertTriangle(props) { return (<IconBase {...props}><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></IconBase>); }
+function Package(props) { return (<IconBase {...props}><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></IconBase>); }
+function X(props) { return (<IconBase {...props}><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></IconBase>); }
+function Lock(props) { return (<IconBase {...props}><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></IconBase>); }
+function Calendar(props) { return (<IconBase {...props}><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></IconBase>); }
+function User(props) { return (<IconBase {...props}><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></IconBase>); }
+function FlaskConical(props) { return (<IconBase {...props}><path d="M10 2v6.29a2 2 0 0 1-.4 1.2L4.34 17.9A2 2 0 0 0 6 21h12a2 2 0 0 0 1.66-3.1L14.4 9.5a2 2 0 0 1-.4-1.2V2"/><path d="M8.5 2h7"/><path d="M7 16h10"/></IconBase>); }
 
-/* ------------------------------------------------------------------ */
-/*  Firebase 初期化                                                    */
-/* ------------------------------------------------------------------ */
+function Plus(props) { return (<IconBase {...props}><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></IconBase>); }
+function Check(props) { return (<IconBase {...props}><polyline points="20 6 9 17 4 12"/></IconBase>); }
+function Calculator(props) { return (<IconBase {...props}><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="8" y1="6" x2="16" y2="6"/><line x1="8" y1="10" x2="8" y2="10"/><line x1="12" y1="10" x2="12" y2="10"/><line x1="16" y1="10" x2="16" y2="10"/><line x1="8" y1="14" x2="8" y2="14"/><line x1="12" y1="14" x2="12" y2="14"/><line x1="16" y1="14" x2="16" y2="14"/><line x1="8" y1="18" x2="8" y2="18"/><line x1="12" y1="18" x2="12" y2="18"/><line x1="16" y1="18" x2="16" y2="18"/></IconBase>); }
+function Info(props) { return (<IconBase {...props}><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></IconBase>); }
 
-const firebaseConfig = {
-  apiKey: "AIzaSyB3rpNftj7h_7onZ_rC3qUHXhjFSWH6Y74",
-  authDomain: "chemical-management-dc65a.firebaseapp.com",
-  projectId: "chemical-management-dc65a",
-  storageBucket: "chemical-management-dc65a.firebasestorage.app",
-  messagingSenderId: "347752460271",
-  appId: "1:347752460271:web:b98500942e7308afeb101a",
-};
 
-const fbApp = initializeApp(firebaseConfig);
-const db = getFirestore(fbApp);
-const auth = getAuth(fbApp);
 
 /* ------------------------------------------------------------------ */
 /*  デザイントークン                                                    */
@@ -101,108 +84,238 @@ const C = {
   lockBg: "#EDEFEA",
 };
 
+// どの分類も処分の考え方は共通（タンク単位のルール）
 const DISPOSAL_POLICY = "タンク使用開始日から1年経過か、満杯時に廃棄";
 
 /* ------------------------------------------------------------------ */
-/*  初期シードデータ（Firestoreが空の時だけ書き込む）                        */
+/*  モックデータ                                                        */
+/*  ・薬品在庫は全てグラム(g)表記                                          */
+/*  ・使用状況(FULL/使用中/空)は在庫量から自動判定（編集不可）              */
+/*  ・廃液分類コード（A-4無・B-5等）が正式な呼び名。名称は補足として扱う      */
+/*  ・投入記録は「薬品ごと」に積み上げる。トータル濃度・使用量も薬品単位      */
 /* ------------------------------------------------------------------ */
 
 const initialChemicals = [
-  { id: "c1", name: "エタノール", formula: "C2H5OH", location: { id: "l1", name: "薬品庫A 棚1", note: "常温・可燃物キャビネット" }, stock: { amount: 640, capacity: 800, unit: "g" }, wasteId: "b5" },
-  { id: "c2", name: "アセトン", formula: "C3H6O", location: { id: "l1", name: "薬品庫A 棚1", note: "常温・可燃物キャビネット" }, stock: { amount: 120, capacity: 400, unit: "g" }, wasteId: "b5" },
-  { id: "c3", name: "塩酸", formula: "HCl", location: { id: "l2", name: "危険物保管庫", note: "酸・アルカリ専用棚" }, stock: { amount: 980, capacity: 1200, unit: "g" }, wasteId: "a5strong" },
-  { id: "c4", name: "水酸化ナトリウム", formula: "NaOH", location: { id: "l3", name: "薬品庫A 棚2", note: "潮解注意・密閉保管" }, stock: { amount: 500, capacity: 500, unit: "g" }, wasteId: "a6strong" },
-  { id: "c5", name: "トルエン", formula: "C7H8", location: { id: "l4", name: "換気ドラフト内保管庫", note: "臭気強・引火注意" }, stock: { amount: 0, capacity: 900, unit: "g" }, wasteId: "b5" },
-  { id: "c6", name: "クロロホルム", formula: "CHCl3", location: { id: "l4", name: "換気ドラフト内保管庫", note: "臭気強・引火注意" }, stock: { amount: 480, capacity: 600, unit: "g" }, wasteId: "b2none" },
-  { id: "c7", name: "硫酸銅(II)", formula: "CuSO4", location: { id: "l3", name: "薬品庫A 棚2", note: "潮解注意・密閉保管" }, stock: { amount: 200, capacity: 300, unit: "g" }, wasteId: "a4none" },
-  { id: "c8", name: "硝酸", formula: "HNO3", location: { id: "l2", name: "危険物保管庫", note: "酸・アルカリ専用棚" }, stock: { amount: 650, capacity: 1200, unit: "g" }, wasteId: "a5strong" },
+  {
+    id: "c1",
+    name: "エタノール",
+    formula: "C2H5OH",
+    location: { id: "l1", name: "薬品庫A 棚1", note: "常温・可燃物キャビネット" },
+    stock: { amount: 640, capacity: 800, unit: "g" },
+    wasteId: "b5",
+  },
+  {
+    id: "c2",
+    name: "アセトン",
+    formula: "C3H6O",
+    location: { id: "l1", name: "薬品庫A 棚1", note: "常温・可燃物キャビネット" },
+    stock: { amount: 120, capacity: 400, unit: "g" },
+    wasteId: "b5",
+  },
+  {
+    id: "c3",
+    name: "塩酸",
+    formula: "HCl",
+    location: { id: "l2", name: "危険物保管庫", note: "酸・アルカリ専用棚" },
+    stock: { amount: 980, capacity: 1200, unit: "g" },
+    wasteId: "a5strong",
+  },
+  {
+    id: "c4",
+    name: "水酸化ナトリウム",
+    formula: "NaOH",
+    location: { id: "l3", name: "薬品庫A 棚2", note: "潮解注意・密閉保管" },
+    stock: { amount: 500, capacity: 500, unit: "g" },
+    wasteId: "a6strong",
+  },
+  {
+    id: "c5",
+    name: "トルエン",
+    formula: "C7H8",
+    location: { id: "l4", name: "換気ドラフト内保管庫", note: "臭気強・引火注意" },
+    stock: { amount: 0, capacity: 900, unit: "g" },
+    wasteId: "b5",
+  },
+  {
+    id: "c6",
+    name: "クロロホルム",
+    formula: "CHCl3",
+    location: { id: "l4", name: "換気ドラフト内保管庫", note: "臭気強・引火注意" },
+    stock: { amount: 480, capacity: 600, unit: "g" },
+    wasteId: "b2none",
+  },
+  {
+    id: "c7",
+    name: "硫酸銅(II)",
+    formula: "CuSO4",
+    location: { id: "l3", name: "薬品庫A 棚2", note: "潮解注意・密閉保管" },
+    stock: { amount: 200, capacity: 300, unit: "g" },
+    wasteId: "a4none",
+  },
+  {
+    id: "c8",
+    name: "硝酸",
+    formula: "HNO3",
+    location: { id: "l2", name: "危険物保管庫", note: "酸・アルカリ専用棚" },
+    stock: { amount: 650, capacity: 1200, unit: "g" },
+    wasteId: "a5strong",
+  },
 ];
 
+// entry: { id, date(YYYY-MM-DD), personName, substanceName, concentrationGL, volumeMl }
+// トータル濃度・トータル使用量は「同じ substanceName の entry 同士」でのみ集計する
 const initialWasteCategories = [
-  { id: "a4none", code: "A-4無", name: "金属系廃液（無害）", note: "重金属化合物（Ni・Cu・Zn・Mn・Co等）", color: "#5B4B7A", disposal: DISPOSAL_POLICY, tankStartDate: "2025-10-23", entries: [
-    { id: "a4-1", date: "2025-10-23", personName: "中野真那", substanceName: "CoCl2(塩化コバルト)", concentrationGL: 5, volumeMl: 100 },
-    { id: "a4-2", date: "2025-12-23", personName: "清水", substanceName: "Cu・Co・Mn", concentrationGL: 0.1, volumeMl: 28 },
-    { id: "a4-3", date: "2025-12-23", personName: "清水", substanceName: "Mo", concentrationGL: 0.1, volumeMl: 100 },
-    { id: "a4-4", date: "2025-12-23", personName: "清水", substanceName: "Co・Fe・Mn", concentrationGL: 0.1, volumeMl: 20 },
-    { id: "a4-5", date: "2025-12-23", personName: "清水", substanceName: "MnSO4", concentrationGL: 1.37, volumeMl: 60 },
-    { id: "a4-6", date: "2025-12-23", personName: "清水", substanceName: "Cu(NO3)2・3H2O", concentrationGL: 12.05, volumeMl: 100 },
-  ]},
-  { id: "a6strong", code: "A-6強", name: "強アルカリ系廃液（pH12.5以上）", note: "廃アルカリ溶液（NaOH・KOH・Na2CO3等）", color: C.amberDeep, disposal: DISPOSAL_POLICY, tankStartDate: "2025-11-25", entries: [
-    { id: "a6s-1", date: "2025-11-25", personName: "なかむら", substanceName: "水酸化カリウム", concentrationGL: 66, volumeMl: 30 },
-    { id: "a6s-2", date: "2025-11-28", personName: "なかむら", substanceName: "水酸化カリウム", concentrationGL: 66, volumeMl: 21 },
-    { id: "a6s-3", date: "2025-12-05", personName: "なかむら", substanceName: "水酸化カリウム", concentrationGL: 66, volumeMl: 21 },
-    { id: "a6s-4", date: "2025-12-27", personName: "なかむら", substanceName: "水酸化カリウム", concentrationGL: 66, volumeMl: 21 },
-    { id: "a6s-5", date: "2025-12-23", personName: "清水", substanceName: "水酸化ナトリウム", concentrationGL: 40, volumeMl: 250 },
-    { id: "a6s-6", date: "2025-12-23", personName: "清水", substanceName: "水酸化ナトリウム", concentrationGL: 40, volumeMl: 42 },
-    { id: "a6s-7", date: "2025-12-23", personName: "清水", substanceName: "KOH", concentrationGL: 0.561, volumeMl: 100 },
-    { id: "a6s-8", date: "2025-12-23", personName: "清水", substanceName: "KOH", concentrationGL: 2.796, volumeMl: 32 },
-    { id: "a6s-9", date: "2025-12-23", personName: "清水", substanceName: "KOH", concentrationGL: 5.611, volumeMl: 210 },
-    { id: "a6s-10", date: "2025-12-23", personName: "清水", substanceName: "KOH", concentrationGL: 56.11, volumeMl: 10 },
-    { id: "a6s-11", date: "2026-07-02", personName: "木下", substanceName: "KOH", concentrationGL: 280.55, volumeMl: 30 },
-  ]},
-  { id: "a6weak", code: "A-6弱", name: "弱アルカリ系廃液（pH12.5未満）", note: "廃アルカリ溶液（NaOH・KOH等の希釈廃液）", color: "#D8B65C", disposal: DISPOSAL_POLICY, tankStartDate: "2026-07-13", entries: [
-    { id: "a6w-1", date: "2026-07-13", personName: "大野", substanceName: "テレフタル酸二ナトリウム", concentrationGL: 0.21, volumeMl: 140 },
-    { id: "a6w-2", date: "2026-07-16", personName: "増田", substanceName: "テレフタル酸二ナトリウム", concentrationGL: 0.21, volumeMl: 150 },
-    { id: "a6w-3", date: "2026-07-22", personName: "大野", substanceName: "テレフタル酸二ナトリウム", concentrationGL: 0.21, volumeMl: 600 },
-  ]},
-  { id: "b2none", code: "B-2無", name: "含ハロゲン有機溶媒類（無害）", note: "クロロホルム・臭化メチル等", color: "#7A4A3A", disposal: DISPOSAL_POLICY, tankStartDate: "2025-11-11", entries: [
-    { id: "b2-1", date: "2025-11-11", personName: "和田", substanceName: "トリクロロ酢酸（TCA）", concentrationGL: 100, volumeMl: 144 },
-    { id: "b2-2", date: "2025-12-09", personName: "和田", substanceName: "トリクロロ酢酸（TCA）", concentrationGL: 100, volumeMl: 20 },
-    { id: "b2-3", date: "2025-12-23", personName: "清水", substanceName: "トリクロロ酢酸（TCA）", concentrationGL: 10, volumeMl: 380 },
-    { id: "b2-4", date: "2025-12-23", personName: "清水", substanceName: "トリクロロ酢酸（TCA）", concentrationGL: 10, volumeMl: 380 },
-    { id: "b2-5", date: "2025-12-23", personName: "清水", substanceName: "トリクロロ酢酸（TCA）", concentrationGL: 1, volumeMl: 300 },
-    { id: "b2-6", date: "2025-12-23", personName: "清水", substanceName: "トリクロロ酢酸（TCA）", concentrationGL: 1, volumeMl: 10 },
-    { id: "b2-7", date: "2026-01-14", personName: "和田", substanceName: "トリクロロ酢酸（TCA）", concentrationGL: 100, volumeMl: 40 },
-    { id: "b2-8", date: "2026-04-17", personName: "大野", substanceName: "トリクロロ酢酸（TCA）", concentrationGL: 100, volumeMl: 300 },
-    { id: "b2-9", date: "2026-04-24", personName: "杉山", substanceName: "トリクロロ酢酸（TCA）", concentrationGL: 100, volumeMl: 200 },
-    { id: "b2-10", date: "2026-05-13", personName: "大野", substanceName: "トリクロロ酢酸（TCA）", concentrationGL: 100, volumeMl: 100 },
-    { id: "b2-11", date: "2026-05-17", personName: "木下", substanceName: "トリクロロ酢酸（TCA）", concentrationGL: 100, volumeMl: 4.5 },
-    { id: "b2-12", date: "2026-05-19", personName: "木下", substanceName: "トリクロロ酢酸（TCA）", concentrationGL: 100, volumeMl: 8 },
-    { id: "b2-13", date: "2026-07-09", personName: "藤井", substanceName: "トリクロロ酢酸（TCA）", concentrationGL: 100, volumeMl: 100 },
-    { id: "b2-14", date: "2025-12-23", personName: "清水", substanceName: "NBT", concentrationGL: 0.1, volumeMl: 250 },
-    { id: "b2-15", date: "2025-12-23", personName: "清水", substanceName: "NBT", concentrationGL: 16.34, volumeMl: 20 },
-    { id: "b2-16", date: "2025-12-23", personName: "清水", substanceName: "NBT", concentrationGL: 81.7, volumeMl: 10 },
-    { id: "b2-17", date: "2025-12-23", personName: "清水", substanceName: "NBT", concentrationGL: 81.7, volumeMl: 30 },
-    { id: "b2-18", date: "2025-12-23", personName: "清水", substanceName: "NBT", concentrationGL: 81.7, volumeMl: 15 },
-    { id: "b2-19", date: "2026-06-30", personName: "杉本", substanceName: "NBT", concentrationGL: 1.64, volumeMl: 10 },
-    { id: "b2-20", date: "2026-07-01", personName: "杉本", substanceName: "NBT", concentrationGL: 1.64, volumeMl: 10 },
-    { id: "b2-21", date: "2026-07-13", personName: "杉本", substanceName: "NBT", concentrationGL: 1.64, volumeMl: 40 },
-    { id: "b2-22", date: "2025-12-23", personName: "清水", substanceName: "BPB", concentrationGL: 0.1, volumeMl: 9 },
-    { id: "b2-23", date: "2025-12-23", personName: "清水", substanceName: "DAPI", concentrationGL: 0.0005, volumeMl: 80 },
-    { id: "b2-24", date: "2025-12-23", personName: "清水", substanceName: "CPPU", concentrationGL: 0.04, volumeMl: 60 },
-    { id: "b2-25", date: "2025-12-23", personName: "清水", substanceName: "IAA", concentrationGL: 26.25, volumeMl: 20 },
-  ]},
-  { id: "b5", code: "B-5", name: "炭化水素系溶媒類", note: "アルコール・エステル・ケトン・エタノール・エーテル・アルデヒド・ヘキサン・トルエン・キシレン・アセトン・メタノール・酢酸エチル等", color: C.teal, disposal: DISPOSAL_POLICY, tankStartDate: "2025-12-08", entries: [
-    { id: "b5-1", date: "2025-12-08", personName: "大野", substanceName: "エタノール", concentrationGL: 790, volumeMl: 50 },
-    { id: "b5-2", date: "2025-12-10", personName: "大野", substanceName: "エタノール", concentrationGL: 790, volumeMl: 100 },
-    { id: "b5-3", date: "2025-12-15", personName: "和田", substanceName: "エタノール", concentrationGL: 790, volumeMl: 50 },
-    { id: "b5-4", date: "2025-12-16", personName: "大野", substanceName: "エタノール", concentrationGL: 790, volumeMl: 30 },
-    { id: "b5-5", date: "2025-12-23", personName: "清水", substanceName: "エタノール", concentrationGL: 552, volumeMl: 170 },
-    { id: "b5-6", date: "2025-12-25", personName: "大野", substanceName: "エタノール", concentrationGL: 790, volumeMl: 200 },
-    { id: "b5-7", date: "2026-01-09", personName: "大野", substanceName: "エタノール", concentrationGL: 790, volumeMl: 80 },
-    { id: "b5-8", date: "2026-01-14", personName: "大野", substanceName: "エタノール", concentrationGL: 790, volumeMl: 80 },
-    { id: "b5-9", date: "2026-01-27", personName: "大野", substanceName: "エタノール", concentrationGL: 790, volumeMl: 200 },
-    { id: "b5-10", date: "2026-03-02", personName: "大野", substanceName: "エタノール", concentrationGL: 790, volumeMl: 120 },
-    { id: "b5-11", date: "2026-03-23", personName: "大野", substanceName: "エタノール", concentrationGL: 790, volumeMl: 200 },
-    { id: "b5-12", date: "2026-03-23", personName: "滿尾", substanceName: "エタノール", concentrationGL: 552, volumeMl: 50 },
-    { id: "b5-13", date: "2026-04-17", personName: "大野", substanceName: "エタノール", concentrationGL: 790, volumeMl: 20 },
-    { id: "b5-14", date: "2026-06-17", personName: "中村", substanceName: "エタノール", concentrationGL: 790, volumeMl: 180 },
-    { id: "b5-15", date: "2025-12-23", personName: "清水", substanceName: "アセトン", concentrationGL: 789, volumeMl: 48 },
-    { id: "b5-16", date: "2025-12-23", personName: "清水", substanceName: "アセトン", concentrationGL: 789, volumeMl: 40 },
-    { id: "b5-17", date: "2025-12-23", personName: "清水", substanceName: "ヘキサン", concentrationGL: 660, volumeMl: 74 },
-    { id: "b5-18", date: "2025-12-23", personName: "清水", substanceName: "メタノール", concentrationGL: 793, volumeMl: 335 },
-    { id: "b5-19", date: "2026-05-28", personName: "清水", substanceName: "PEG", concentrationGL: 0.0566, volumeMl: 150 },
-  ]},
-  { id: "b5f", code: "B-5ホ", name: "炭化水素系溶媒類（ホルムアルデヒド）", note: "ホルムアルデヒド（ホルマリン）", color: "#B97A6B", disposal: DISPOSAL_POLICY, tankStartDate: "2026-06-25", entries: [
-    { id: "b5f-1", date: "2026-06-25", personName: "杉山", substanceName: "ホルムアルデヒド", concentrationGL: 39.96, volumeMl: 500 },
-  ]},
-  { id: "a5strong", code: "A-5強", name: "強酸系廃液（pH2以下）", note: "廃酸溶液（HCl・H2SO4・HNO3の無機酸廃液）", color: "#8E3B33", disposal: DISPOSAL_POLICY, tankStartDate: null, entries: [] },
+  {
+    id: "a4none",
+    code: "A-4無",
+    name: "金属系廃液（無害）",
+    note: "重金属化合物（Ni・Cu・Zn・Mn・Co等）",
+    color: "#5B4B7A",
+    disposal: DISPOSAL_POLICY,
+    tankStartDate: "2025-10-23",
+    entries: [
+      { id: "a4-1", date: "2025-10-23", personName: "中野真那", substanceName: "CoCl2(塩化コバルト)", concentrationGL: 5, volumeMl: 100 },
+      { id: "a4-2", date: "2025-12-23", personName: "清水", substanceName: "Cu・Co・Mn", concentrationGL: 0.1, volumeMl: 28 },
+      { id: "a4-3", date: "2025-12-23", personName: "清水", substanceName: "Mo", concentrationGL: 0.1, volumeMl: 100 },
+      { id: "a4-4", date: "2025-12-23", personName: "清水", substanceName: "Co・Fe・Mn", concentrationGL: 0.1, volumeMl: 20 },
+      { id: "a4-5", date: "2025-12-23", personName: "清水", substanceName: "MnSO4", concentrationGL: 1.37, volumeMl: 60 },
+      { id: "a4-6", date: "2025-12-23", personName: "清水", substanceName: "Cu(NO3)2・3H2O", concentrationGL: 12.05, volumeMl: 100 },
+    ],
+  },
+  {
+    id: "a6strong",
+    code: "A-6強",
+    name: "強アルカリ系廃液（pH12.5以上）",
+    note: "廃アルカリ溶液（NaOH・KOH・Na2CO3等）",
+    color: C.amberDeep,
+    disposal: DISPOSAL_POLICY,
+    tankStartDate: "2025-11-25",
+    entries: [
+      { id: "a6s-1", date: "2025-11-25", personName: "なかむら", substanceName: "水酸化カリウム", concentrationGL: 66, volumeMl: 30 },
+      { id: "a6s-2", date: "2025-11-28", personName: "なかむら", substanceName: "水酸化カリウム", concentrationGL: 66, volumeMl: 21 },
+      { id: "a6s-3", date: "2025-12-05", personName: "なかむら", substanceName: "水酸化カリウム", concentrationGL: 66, volumeMl: 21 },
+      { id: "a6s-4", date: "2025-12-27", personName: "なかむら", substanceName: "水酸化カリウム", concentrationGL: 66, volumeMl: 21 },
+      { id: "a6s-5", date: "2025-12-23", personName: "清水", substanceName: "水酸化ナトリウム", concentrationGL: 40, volumeMl: 250 },
+      { id: "a6s-6", date: "2025-12-23", personName: "清水", substanceName: "水酸化ナトリウム", concentrationGL: 40, volumeMl: 42 },
+      { id: "a6s-7", date: "2025-12-23", personName: "清水", substanceName: "KOH", concentrationGL: 0.561, volumeMl: 100 },
+      { id: "a6s-8", date: "2025-12-23", personName: "清水", substanceName: "KOH", concentrationGL: 2.796, volumeMl: 32 },
+      { id: "a6s-9", date: "2025-12-23", personName: "清水", substanceName: "KOH", concentrationGL: 5.611, volumeMl: 210 },
+      { id: "a6s-10", date: "2025-12-23", personName: "清水", substanceName: "KOH", concentrationGL: 56.11, volumeMl: 10 },
+      { id: "a6s-11", date: "2026-07-02", personName: "木下", substanceName: "KOH", concentrationGL: 280.55, volumeMl: 30 },
+    ],
+  },
+  {
+    id: "a6weak",
+    code: "A-6弱",
+    name: "弱アルカリ系廃液（pH12.5未満）",
+    note: "廃アルカリ溶液（NaOH・KOH等の希釈廃液）",
+    color: "#D8B65C",
+    disposal: DISPOSAL_POLICY,
+    tankStartDate: "2026-07-13",
+    entries: [
+      { id: "a6w-1", date: "2026-07-13", personName: "大野", substanceName: "テレフタル酸二ナトリウム", concentrationGL: 0.21, volumeMl: 140 },
+      { id: "a6w-2", date: "2026-07-16", personName: "増田", substanceName: "テレフタル酸二ナトリウム", concentrationGL: 0.21, volumeMl: 150 },
+      { id: "a6w-3", date: "2026-07-22", personName: "大野", substanceName: "テレフタル酸二ナトリウム", concentrationGL: 0.21, volumeMl: 600 },
+    ],
+  },
+  {
+    id: "b2none",
+    code: "B-2無",
+    name: "含ハロゲン有機溶媒類（無害）",
+    note: "クロロホルム・臭化メチル等",
+    color: "#7A4A3A",
+    disposal: DISPOSAL_POLICY,
+    tankStartDate: "2025-11-11",
+    entries: [
+      { id: "b2-1", date: "2025-11-11", personName: "和田", substanceName: "トリクロロ酢酸（TCA）", concentrationGL: 100, volumeMl: 144 },
+      { id: "b2-2", date: "2025-12-09", personName: "和田", substanceName: "トリクロロ酢酸（TCA）", concentrationGL: 100, volumeMl: 20 },
+      { id: "b2-3", date: "2025-12-23", personName: "清水", substanceName: "トリクロロ酢酸（TCA）", concentrationGL: 10, volumeMl: 380 },
+      { id: "b2-4", date: "2025-12-23", personName: "清水", substanceName: "トリクロロ酢酸（TCA）", concentrationGL: 10, volumeMl: 380 },
+      { id: "b2-5", date: "2025-12-23", personName: "清水", substanceName: "トリクロロ酢酸（TCA）", concentrationGL: 1, volumeMl: 300 },
+      { id: "b2-6", date: "2025-12-23", personName: "清水", substanceName: "トリクロロ酢酸（TCA）", concentrationGL: 1, volumeMl: 10 },
+      { id: "b2-7", date: "2026-01-14", personName: "和田", substanceName: "トリクロロ酢酸（TCA）", concentrationGL: 100, volumeMl: 40 },
+      { id: "b2-8", date: "2026-04-17", personName: "大野", substanceName: "トリクロロ酢酸（TCA）", concentrationGL: 100, volumeMl: 300 },
+      { id: "b2-9", date: "2026-04-24", personName: "杉山", substanceName: "トリクロロ酢酸（TCA）", concentrationGL: 100, volumeMl: 200 },
+      { id: "b2-10", date: "2026-05-13", personName: "大野", substanceName: "トリクロロ酢酸（TCA）", concentrationGL: 100, volumeMl: 100 },
+      { id: "b2-11", date: "2026-05-17", personName: "木下", substanceName: "トリクロロ酢酸（TCA）", concentrationGL: 100, volumeMl: 4.5 },
+      { id: "b2-12", date: "2026-05-19", personName: "木下", substanceName: "トリクロロ酢酸（TCA）", concentrationGL: 100, volumeMl: 8 },
+      { id: "b2-13", date: "2026-07-09", personName: "藤井", substanceName: "トリクロロ酢酸（TCA）", concentrationGL: 100, volumeMl: 100 },
+      { id: "b2-14", date: "2025-12-23", personName: "清水", substanceName: "NBT", concentrationGL: 0.1, volumeMl: 250 },
+      { id: "b2-15", date: "2025-12-23", personName: "清水", substanceName: "NBT", concentrationGL: 16.34, volumeMl: 20 },
+      { id: "b2-16", date: "2025-12-23", personName: "清水", substanceName: "NBT", concentrationGL: 81.7, volumeMl: 10 },
+      { id: "b2-17", date: "2025-12-23", personName: "清水", substanceName: "NBT", concentrationGL: 81.7, volumeMl: 30 },
+      { id: "b2-18", date: "2025-12-23", personName: "清水", substanceName: "NBT", concentrationGL: 81.7, volumeMl: 15 },
+      { id: "b2-19", date: "2026-06-30", personName: "杉本", substanceName: "NBT", concentrationGL: 1.64, volumeMl: 10 },
+      { id: "b2-20", date: "2026-07-01", personName: "杉本", substanceName: "NBT", concentrationGL: 1.64, volumeMl: 10 },
+      { id: "b2-21", date: "2026-07-13", personName: "杉本", substanceName: "NBT", concentrationGL: 1.64, volumeMl: 40 },
+      { id: "b2-22", date: "2025-12-23", personName: "清水", substanceName: "BPB", concentrationGL: 0.1, volumeMl: 9 },
+      { id: "b2-23", date: "2025-12-23", personName: "清水", substanceName: "DAPI", concentrationGL: 0.0005, volumeMl: 80 },
+      { id: "b2-24", date: "2025-12-23", personName: "清水", substanceName: "CPPU", concentrationGL: 0.04, volumeMl: 60 },
+      { id: "b2-25", date: "2025-12-23", personName: "清水", substanceName: "IAA", concentrationGL: 26.25, volumeMl: 20 },
+    ],
+  },
+  {
+    id: "b5",
+    code: "B-5",
+    name: "炭化水素系溶媒類",
+    note: "アルコール・エステル・ケトン・エタノール・エーテル・アルデヒド・ヘキサン・トルエン・キシレン・アセトン・メタノール・酢酸エチル等",
+    color: C.teal,
+    disposal: DISPOSAL_POLICY,
+    tankStartDate: "2025-12-08",
+    entries: [
+      { id: "b5-1", date: "2025-12-08", personName: "大野", substanceName: "エタノール", concentrationGL: 790, volumeMl: 50 },
+      { id: "b5-2", date: "2025-12-10", personName: "大野", substanceName: "エタノール", concentrationGL: 790, volumeMl: 100 },
+      { id: "b5-3", date: "2025-12-15", personName: "和田", substanceName: "エタノール", concentrationGL: 790, volumeMl: 50 },
+      { id: "b5-4", date: "2025-12-16", personName: "大野", substanceName: "エタノール", concentrationGL: 790, volumeMl: 30 },
+      { id: "b5-5", date: "2025-12-23", personName: "清水", substanceName: "エタノール", concentrationGL: 552, volumeMl: 170 },
+      { id: "b5-6", date: "2025-12-25", personName: "大野", substanceName: "エタノール", concentrationGL: 790, volumeMl: 200 },
+      { id: "b5-7", date: "2026-01-09", personName: "大野", substanceName: "エタノール", concentrationGL: 790, volumeMl: 80 },
+      { id: "b5-8", date: "2026-01-14", personName: "大野", substanceName: "エタノール", concentrationGL: 790, volumeMl: 80 },
+      { id: "b5-9", date: "2026-01-27", personName: "大野", substanceName: "エタノール", concentrationGL: 790, volumeMl: 200 },
+      { id: "b5-10", date: "2026-03-02", personName: "大野", substanceName: "エタノール", concentrationGL: 790, volumeMl: 120 },
+      { id: "b5-11", date: "2026-03-23", personName: "大野", substanceName: "エタノール", concentrationGL: 790, volumeMl: 200 },
+      { id: "b5-12", date: "2026-03-23", personName: "滿尾", substanceName: "エタノール", concentrationGL: 552, volumeMl: 50 },
+      { id: "b5-13", date: "2026-04-17", personName: "大野", substanceName: "エタノール", concentrationGL: 790, volumeMl: 20 },
+      { id: "b5-14", date: "2026-06-17", personName: "中村", substanceName: "エタノール", concentrationGL: 790, volumeMl: 180 },
+      { id: "b5-15", date: "2025-12-23", personName: "清水", substanceName: "アセトン", concentrationGL: 789, volumeMl: 48 },
+      { id: "b5-16", date: "2025-12-23", personName: "清水", substanceName: "アセトン", concentrationGL: 789, volumeMl: 40 },
+      { id: "b5-17", date: "2025-12-23", personName: "清水", substanceName: "ヘキサン", concentrationGL: 660, volumeMl: 74 },
+      { id: "b5-18", date: "2025-12-23", personName: "清水", substanceName: "メタノール", concentrationGL: 793, volumeMl: 335 },
+      { id: "b5-19", date: "2026-05-28", personName: "清水", substanceName: "PEG", concentrationGL: 0.0566, volumeMl: 150 },
+    ],
+  },
+  {
+    id: "b5f",
+    code: "B-5ホ",
+    name: "炭化水素系溶媒類（ホルムアルデヒド）",
+    note: "ホルムアルデヒド（ホルマリン）",
+    color: "#B97A6B",
+    disposal: DISPOSAL_POLICY,
+    tankStartDate: "2026-06-25",
+    entries: [
+      { id: "b5f-1", date: "2026-06-25", personName: "杉山", substanceName: "ホルムアルデヒド", concentrationGL: 39.96, volumeMl: 500 },
+    ],
+  },
+  {
+    id: "a5strong",
+    code: "A-5強",
+    name: "強酸系廃液（pH2以下）",
+    note: "廃酸溶液（HCl・H2SO4・HNO3の無機酸廃液）",
+    color: "#8E3B33",
+    disposal: DISPOSAL_POLICY,
+    tankStartDate: null,
+    entries: [],
+  },
 ];
 
 /* ------------------------------------------------------------------ */
-/*  ユーティリティー                                                      */
+/*  ユーティリティ                                                      */
 /* ------------------------------------------------------------------ */
 
+// 化学式・物質名を表示用に整形する。
+// 元素記号や閉じ括弧の直後の数字＝下付き（原子数）。
+// それ以外（文字列の先頭・「・」の直後など）の数字＝水和物の係数などなので
+// 通常サイズのまま（例：Cu(NO3)2・3H2O → Cu(NO₃)₂・3H₂O の「3」は下付きにしない）。
 function renderFormula(text) {
   const nodes = [];
   let i = 0;
@@ -247,6 +360,8 @@ function autoStatus(stock) {
   return "in_use";
 }
 
+// 濃度(g/L)を直接入力した記録の集合から、合計使用量・合成濃度(g/L)を算出する
+// ※必ず「同じ薬品(substanceName)」の記録同士に対して使うこと
 function summarizeEntries(entries) {
   let totalVolumeMl = 0;
   let totalMassG = 0;
@@ -262,6 +377,7 @@ function summarizeEntries(entries) {
   };
 }
 
+// タンク内の記録を薬品(substanceName)ごとにグループ化する
 function groupBySubstance(entries) {
   const map = new Map();
   entries.forEach((e) => {
@@ -275,13 +391,14 @@ function groupBySubstance(entries) {
   }));
 }
 
+// 廃液コードの並び替え（A→B、数字が小さい順。同じ番号内では強/有→弱/無の順）
 function compareWasteCode(a, b) {
   const parse = (code) => {
     const m = code.match(/^([A-Za-z])-(\d+)(.*)$/);
     if (!m) return { letter: code, num: 0, suffix: "" };
     return { letter: m[1], num: parseInt(m[2], 10), suffix: m[3] || "" };
   };
-  const suffixRank = { "強": 0, "有": 0, "弱": 1, "無": 1, "": 0, "ホ": 2 };
+  const suffixRank = { 強: 0, 有: 0, 弱: 1, 無: 1, "": 0, ホ: 2 };
   const pa = parse(a.code);
   const pb = parse(b.code);
   if (pa.letter !== pb.letter) return pa.letter < pb.letter ? -1 : 1;
@@ -428,6 +545,7 @@ function LockedField({ label, value, unit }) {
   );
 }
 
+// 廃液分類の呼び名は「コード」が主役（A-4無・B-5等）。説明名称は補足として小さく添える。
 function WasteCodeTag({ waste, size = "normal" }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
@@ -566,7 +684,7 @@ function LocationTab({ chemicals, onOpenLocation }) {
 }
 
 /* ------------------------------------------------------------------ */
-/*  ホーム：在庫タブ                                                    */
+/*  ホーム：在庫タブ（全てグラム表記／使用状況は自動・編集不可）             */
 /* ------------------------------------------------------------------ */
 
 function InventoryTab({ chemicals, onRecord, onAdd, onDelete }) {
@@ -624,7 +742,7 @@ function InventoryTab({ chemicals, onRecord, onAdd, onDelete }) {
 }
 
 /* ------------------------------------------------------------------ */
-/*  ホーム：廃液タブ                                                    */
+/*  ホーム：廃液タブ（分類＝タンクごと／コードを主役に表示）                  */
 /* ------------------------------------------------------------------ */
 
 function WasteTab({ wasteCategories, onOpenWaste, onOpenCalc }) {
@@ -796,7 +914,7 @@ function LocationPage({ location, chemicals, onBack, onSelectChemical }) {
 }
 
 /* ------------------------------------------------------------------ */
-/*  廃液管理ページ                                                      */
+/*  廃液管理ページ（タンク：薬品ごとにグループ表示、合計量mLのみタンク単位） */
 /* ------------------------------------------------------------------ */
 
 function WastePage({ waste, onBack, onOpenSubstance, onAddOther }) {
@@ -865,6 +983,7 @@ function WastePage({ waste, onBack, onOpenSubstance, onAddOther }) {
         </button>
       </div>
 
+      {/* タンク全体の合計使用量（mL）のみを表示。濃度は薬品ごとのページで確認 */}
       <div style={{ position: "sticky", bottom: 0, background: C.paper, borderTop: `1px solid ${C.line}`, padding: "14px 16px" }}>
         <LockedField label="このタンクの合計使用量" value={tankVolume} unit="mL" />
       </div>
@@ -873,7 +992,7 @@ function WastePage({ waste, onBack, onOpenSubstance, onAddOther }) {
 }
 
 /* ------------------------------------------------------------------ */
-/*  薬品ごとの廃液記録ページ                                             */
+/*  薬品ごとの廃液記録ページ（トータル濃度・使用量はこの薬品のみで集計）      */
 /* ------------------------------------------------------------------ */
 
 function WasteSubstancePage({ waste, substanceName, onBack, onOpenEntry, onAddEntry }) {
@@ -1007,7 +1126,9 @@ function WasteEntryPage({ entry, waste, onBack, onDelete }) {
 }
 
 /* ------------------------------------------------------------------ */
-/*  廃液・投入記録の追加ページ                                            */
+/*  廃液・投入記録の追加ページ（日付・氏名・使用量・濃度g/Lは必須）           */
+/*  lockedSubstanceName がある場合＝薬品ページから：薬品名は固定             */
+/*  ない場合＝タンクページから：一覧にない薬品なので薬品名を直接入力          */
 /* ------------------------------------------------------------------ */
 
 function WasteEntryAddPage({ waste, lockedSubstanceName, onBack, onSave, onOpenCalc }) {
@@ -1128,7 +1249,7 @@ function WasteEntryAddPage({ waste, lockedSubstanceName, onBack, onSave, onOpenC
 }
 
 /* ------------------------------------------------------------------ */
-/*  g/L 換算計算ツール                                                  */
+/*  g/L 換算計算ツール（分子量・物質量・体積から濃度g/Lを算出）              */
 /* ------------------------------------------------------------------ */
 
 function ConcentrationCalcPage({ onBack }) {
@@ -1218,7 +1339,7 @@ function ConcentrationCalcPage({ onBack }) {
 }
 
 /* ------------------------------------------------------------------ */
-/*  質量記録ページ                                                      */
+/*  質量記録ページ（使用後の質量を都度入力・グラム表記）                     */
 /* ------------------------------------------------------------------ */
 
 function RecordMassPage({ chemical, onBack, onSave }) {
@@ -1410,19 +1531,6 @@ function AddChemicalPage({ wasteCategories, onBack, onSave }) {
 }
 
 /* ------------------------------------------------------------------ */
-/*  Firestore ヘルパー                                                  */
-/* ------------------------------------------------------------------ */
-
-async function seedIfEmpty() {
-  const snap = await getDocs(collection(db, "chemicals"));
-  if (!snap.empty) return;
-  const batch = writeBatch(db);
-  initialChemicals.forEach((c) => batch.set(doc(db, "chemicals", c.id), c));
-  initialWasteCategories.forEach((w) => batch.set(doc(db, "wasteCategories", w.id), w));
-  await batch.commit();
-}
-
-/* ------------------------------------------------------------------ */
 /*  アプリ本体                                                         */
 /* ------------------------------------------------------------------ */
 
@@ -1434,39 +1542,10 @@ const TABS = [
 ];
 
 function ChemStockApp() {
-  const [chemicals, setChemicals] = useState([]);
-  const [wasteCategories, setWasteCategories] = useState([]);
-  const [ready, setReady] = useState(false);
+  const [chemicals, setChemicals] = useState(initialChemicals);
+  const [wasteCategories, setWasteCategories] = useState(initialWasteCategories);
   const [homeTab, setHomeTab] = useState("search");
   const [stack, setStack] = useState([{ view: "home" }]);
-
-  useEffect(() => {
-    let unsubChem = () => {};
-    let unsubWaste = () => {};
-    const unsubAuth = onAuthStateChanged(auth, async (user) => {
-      if (!user) {
-        signInAnonymously(auth).catch((e) => console.error("anon sign-in failed", e));
-        return;
-      }
-      try {
-        await seedIfEmpty();
-      } catch (e) {
-        console.error("seed failed", e);
-      }
-      unsubChem = onSnapshot(collection(db, "chemicals"), (snap) => {
-        setChemicals(snap.docs.map((d) => ({ ...d.data(), id: d.id })));
-        setReady(true);
-      });
-      unsubWaste = onSnapshot(collection(db, "wasteCategories"), (snap) => {
-        setWasteCategories(snap.docs.map((d) => ({ ...d.data(), id: d.id })));
-      });
-    });
-    return () => {
-      unsubAuth();
-      unsubChem();
-      unsubWaste();
-    };
-  }, []);
 
   const current = stack[stack.length - 1];
 
@@ -1477,68 +1556,60 @@ function ChemStockApp() {
     if (tab) setHomeTab(tab);
   };
 
-  const handleSaveMass = async (chemId, used) => {
-    const chem = chemicals.find((c) => c.id === chemId);
-    if (!chem) return;
-    const newAmount = Math.max(0, +(chem.stock.amount - used).toFixed(2));
-    await updateDoc(doc(db, "chemicals", chemId), { "stock.amount": newAmount });
+  const handleSaveMass = (chemId, used) => {
+    setChemicals((prev) =>
+      prev.map((c) => (c.id === chemId ? { ...c, stock: { ...c.stock, amount: Math.max(0, +(c.stock.amount - used).toFixed(2)) } } : c))
+    );
   };
 
-  const handleAddChemical = async ({ name, formula, locationName, locationNote, capacity, wasteId }) => {
-    const existingLoc = chemicals.find((c) => c.location.name.trim() === locationName)?.location;
-    const location = existingLoc || { id: slugify(locationName), name: locationName, note: locationNote || "" };
-    const newId = "c_" + Date.now();
-    const newChem = {
-      id: newId,
-      name,
-      formula,
-      location,
-      stock: { amount: capacity, capacity, unit: "g" },
-      wasteId,
-    };
-    await setDoc(doc(db, "chemicals", newId), newChem);
+  const handleAddChemical = ({ name, formula, locationName, locationNote, capacity, wasteId }) => {
+    setChemicals((prev) => {
+      const existingLoc = prev.find((c) => c.location.name.trim() === locationName)?.location;
+      const location = existingLoc || { id: slugify(locationName), name: locationName, note: locationNote || "" };
+      const newChem = {
+        id: "c_" + Date.now(),
+        name,
+        formula,
+        location,
+        stock: { amount: capacity, capacity, unit: "g" },
+        wasteId,
+      };
+      return [...prev, newChem];
+    });
     goHome("inventory");
   };
 
-  const handleDeleteChemical = async (chem) => {
+  const handleDeleteChemical = (chem) => {
     if (typeof window !== "undefined" && window.confirm) {
       if (!window.confirm(`「${chem.name}」を薬品一覧から削除しますか？`)) return;
     }
-    await deleteDoc(doc(db, "chemicals", chem.id));
+    setChemicals((prev) => prev.filter((c) => c.id !== chem.id));
     pop();
   };
 
-  const handleAddWasteEntry = async (wasteId, entry) => {
-    const w = wasteCategories.find((x) => x.id === wasteId);
-    if (!w) return;
-    const newEntries = [...w.entries, entry];
-    const newTankStartDate = w.tankStartDate || entry.date;
-    await updateDoc(doc(db, "wasteCategories", wasteId), { entries: newEntries, tankStartDate: newTankStartDate });
+  const handleAddWasteEntry = (wasteId, entry) => {
+    setWasteCategories((prev) =>
+      prev.map((w) =>
+        w.id === wasteId
+          ? { ...w, tankStartDate: w.tankStartDate || entry.date, entries: [...w.entries, entry] }
+          : w
+      )
+    );
     pop();
   };
 
-  const handleDeleteWasteEntry = async (wasteId, entry) => {
+  const handleDeleteWasteEntry = (wasteId, entry) => {
     if (typeof window !== "undefined" && window.confirm) {
       if (!window.confirm(`${entry.date}・${entry.personName}の記録（${entry.substanceName}）を削除しますか？`)) return;
     }
-    const w = wasteCategories.find((x) => x.id === wasteId);
-    if (!w) return;
-    const newEntries = w.entries.filter((e) => e.id !== entry.id);
-    await updateDoc(doc(db, "wasteCategories", wasteId), { entries: newEntries });
+    setWasteCategories((prev) =>
+      prev.map((w) => (w.id === wasteId ? { ...w, entries: w.entries.filter((e) => e.id !== entry.id) } : w))
+    );
     pop();
   };
 
   const findChem = (id) => chemicals.find((c) => c.id === id);
   const findWaste = (id) => wasteCategories.find((w) => w.id === id);
-
-  if (!ready) {
-    return (
-      <div style={{ fontFamily: "'Inter', sans-serif", background: C.bg, minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", color: C.inkSoft, fontSize: 14 }}>
-        <style>{FONT_IMPORT}</style>
-        読み込み中...
-      </div>
-    );
-  }
 
   return (
     <div style={{ fontFamily: "'Inter', sans-serif", background: C.bg, minHeight: "100vh", display: "flex", justifyContent: "center" }}>
@@ -1655,8 +1726,7 @@ function ChemStockApp() {
   );
 }
 
-const root = ReactDOM.createRoot(document.getElementById("root"));
-root.render(<ChemStockApp />);
+ReactDOM.createRoot(document.getElementById('root')).render(<ChemStockApp />);
 </script>
 </body>
 </html>
