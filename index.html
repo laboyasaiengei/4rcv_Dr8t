@@ -17,6 +17,11 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.24.7/babel.min.js"></script>
 
+<!-- Firebase (compat SDK: グローバルな firebase 名前空間を使うので、モジュール未対応の
+     Babel-in-browser構成でもそのまま呼び出せる) -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+
 <style>
   html, body { margin: 0; padding: 0; background: #EEF1EC; -webkit-tap-highlight-color: transparent; }
   * { box-sizing: border-box; }
@@ -307,6 +312,54 @@ const initialWasteCategories = [
     entries: [],
   },
 ];
+
+/* ------------------------------------------------------------------ */
+/*  Firebase / Firestore                                              */
+/*  ・chemicals コレクション：薬品ごとに1ドキュメント                        */
+/*  ・wasteCategories コレクション：分類（タンク）のメタ情報のみ              */
+/*  ・wasteEntries コレクション：投入記録ごとに1ドキュメント（wasteId で紐付け）*/
+/*  ・meta/status ドキュメント：初回だけモックデータを流し込むためのフラグ     */
+/* ------------------------------------------------------------------ */
+
+const firebaseConfig = {
+  apiKey: "AIzaSyB3rpNftj7h_7onZ_rC3qUHXhjFSWH6Y74",
+  authDomain: "chemical-management-dc65a.firebaseapp.com",
+  projectId: "chemical-management-dc65a",
+  storageBucket: "chemical-management-dc65a.firebasestorage.app",
+  messagingSenderId: "347752460271",
+  appId: "1:347752460271:web:b98500942e7308afeb101a",
+};
+
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+
+// 初回アクセス時だけ、モックデータをFirestoreに書き込む。
+// meta/status ドキュメントの有無で「初回かどうか」を判定するので、
+// 一度seedした後にユーザーが全部削除しても再投入はされない。
+async function seedIfNeeded() {
+  const flagRef = db.collection("meta").doc("status");
+  const flagSnap = await flagRef.get();
+  if (flagSnap.exists) return;
+
+  const batch = db.batch();
+
+  initialChemicals.forEach((c) => {
+    const { id, ...rest } = c;
+    batch.set(db.collection("chemicals").doc(id), rest);
+  });
+
+  initialWasteCategories.forEach((w) => {
+    const { id, entries, ...rest } = w;
+    batch.set(db.collection("wasteCategories").doc(id), rest);
+    entries.forEach((e) => {
+      const { id: entryId, ...entryRest } = e;
+      batch.set(db.collection("wasteEntries").doc(entryId), { wasteId: id, ...entryRest });
+    });
+  });
+
+  batch.set(flagRef, { seeded: true });
+  await batch.commit();
+}
 
 /* ------------------------------------------------------------------ */
 /*  ユーティリティ                                                      */
@@ -1542,10 +1595,53 @@ const TABS = [
 ];
 
 function ChemStockApp() {
-  const [chemicals, setChemicals] = useState(initialChemicals);
-  const [wasteCategories, setWasteCategories] = useState(initialWasteCategories);
+  const [chemicals, setChemicals] = useState([]);
+  const [wasteMeta, setWasteMeta] = useState([]);
+  const [wasteEntriesRaw, setWasteEntriesRaw] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [homeTab, setHomeTab] = useState("search");
   const [stack, setStack] = useState([{ view: "home" }]);
+
+  // Firestoreへの接続・購読。初回だけモックデータを流し込んでから購読を始める。
+  useEffect(() => {
+    let unsubChem, unsubWaste, unsubEntries;
+    let cancelled = false;
+
+    seedIfNeeded()
+      .catch((err) => console.error("seed failed", err))
+      .finally(() => {
+        if (cancelled) return;
+        unsubChem = db.collection("chemicals").onSnapshot(
+          (snap) => {
+            setChemicals(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+            setLoading(false);
+          },
+          (err) => console.error("chemicals subscription error", err)
+        );
+        unsubWaste = db.collection("wasteCategories").onSnapshot(
+          (snap) => setWasteMeta(snap.docs.map((d) => ({ id: d.id, ...d.data() }))),
+          (err) => console.error("wasteCategories subscription error", err)
+        );
+        unsubEntries = db.collection("wasteEntries").onSnapshot(
+          (snap) => setWasteEntriesRaw(snap.docs.map((d) => ({ id: d.id, ...d.data() }))),
+          (err) => console.error("wasteEntries subscription error", err)
+        );
+      });
+
+    return () => {
+      cancelled = true;
+      if (unsubChem) unsubChem();
+      if (unsubWaste) unsubWaste();
+      if (unsubEntries) unsubEntries();
+    };
+  }, []);
+
+  // wasteCategories（メタ情報）＋wasteEntries（投入記録）を、既存の画面コンポーネントが
+  // 期待する「entries を内包したカテゴリ配列」の形に合成する
+  const wasteCategories = useMemo(
+    () => wasteMeta.map((w) => ({ ...w, entries: wasteEntriesRaw.filter((e) => e.wasteId === w.id) })),
+    [wasteMeta, wasteEntriesRaw]
+  );
 
   const current = stack[stack.length - 1];
 
@@ -1556,60 +1652,61 @@ function ChemStockApp() {
     if (tab) setHomeTab(tab);
   };
 
-  const handleSaveMass = (chemId, used) => {
-    setChemicals((prev) =>
-      prev.map((c) => (c.id === chemId ? { ...c, stock: { ...c.stock, amount: Math.max(0, +(c.stock.amount - used).toFixed(2)) } } : c))
-    );
+  const handleSaveMass = async (chemId, used) => {
+    const chem = chemicals.find((c) => c.id === chemId);
+    if (!chem) return;
+    const newAmount = Math.max(0, +(chem.stock.amount - used).toFixed(2));
+    await db.collection("chemicals").doc(chemId).update({ "stock.amount": newAmount });
   };
 
-  const handleAddChemical = ({ name, formula, locationName, locationNote, capacity, wasteId }) => {
-    setChemicals((prev) => {
-      const existingLoc = prev.find((c) => c.location.name.trim() === locationName)?.location;
-      const location = existingLoc || { id: slugify(locationName), name: locationName, note: locationNote || "" };
-      const newChem = {
-        id: "c_" + Date.now(),
-        name,
-        formula,
-        location,
-        stock: { amount: capacity, capacity, unit: "g" },
-        wasteId,
-      };
-      return [...prev, newChem];
-    });
+  const handleAddChemical = async ({ name, formula, locationName, locationNote, capacity, wasteId }) => {
+    const existingLoc = chemicals.find((c) => c.location.name.trim() === locationName)?.location;
+    const location = existingLoc || { id: slugify(locationName), name: locationName, note: locationNote || "" };
+    const newId = "c_" + Date.now();
+    await db
+      .collection("chemicals")
+      .doc(newId)
+      .set({ name, formula, location, stock: { amount: capacity, capacity, unit: "g" }, wasteId });
     goHome("inventory");
   };
 
-  const handleDeleteChemical = (chem) => {
+  const handleDeleteChemical = async (chem) => {
     if (typeof window !== "undefined" && window.confirm) {
       if (!window.confirm(`「${chem.name}」を薬品一覧から削除しますか？`)) return;
     }
-    setChemicals((prev) => prev.filter((c) => c.id !== chem.id));
+    await db.collection("chemicals").doc(chem.id).delete();
     pop();
   };
 
-  const handleAddWasteEntry = (wasteId, entry) => {
-    setWasteCategories((prev) =>
-      prev.map((w) =>
-        w.id === wasteId
-          ? { ...w, tankStartDate: w.tankStartDate || entry.date, entries: [...w.entries, entry] }
-          : w
-      )
-    );
+  const handleAddWasteEntry = async (wasteId, entry) => {
+    const { id, ...rest } = entry;
+    await db.collection("wasteEntries").doc(id).set({ wasteId, ...rest });
+    const cat = wasteMeta.find((w) => w.id === wasteId);
+    if (cat && !cat.tankStartDate) {
+      await db.collection("wasteCategories").doc(wasteId).update({ tankStartDate: entry.date });
+    }
     pop();
   };
 
-  const handleDeleteWasteEntry = (wasteId, entry) => {
+  const handleDeleteWasteEntry = async (wasteId, entry) => {
     if (typeof window !== "undefined" && window.confirm) {
       if (!window.confirm(`${entry.date}・${entry.personName}の記録（${entry.substanceName}）を削除しますか？`)) return;
     }
-    setWasteCategories((prev) =>
-      prev.map((w) => (w.id === wasteId ? { ...w, entries: w.entries.filter((e) => e.id !== entry.id) } : w))
-    );
+    await db.collection("wasteEntries").doc(entry.id).delete();
     pop();
   };
 
   const findChem = (id) => chemicals.find((c) => c.id === id);
   const findWaste = (id) => wasteCategories.find((w) => w.id === id);
+
+  if (loading) {
+    return (
+      <div style={{ fontFamily: "'Inter', sans-serif", background: C.bg, minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <style>{FONT_IMPORT}</style>
+        <div style={{ color: C.inkSoft, fontSize: 13 }}>読み込み中…</div>
+      </div>
+    );
+  }
 
   return (
     <div style={{ fontFamily: "'Inter', sans-serif", background: C.bg, minHeight: "100vh", display: "flex", justifyContent: "center" }}>
