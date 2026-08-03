@@ -1856,7 +1856,16 @@ function ChemStockApp() {
       <div style={{ width: "100%", maxWidth: 460, minHeight: "100vh", background: C.bg, display: "flex", flexDirection: "column" }}>
         {current.view === "home" && (
           <>
-            <TopBar title="ATLAS 薬品在庫・廃液管理システム" subtitle="Agent Tracking, Liquid-effluent Administration System" />
+            <TopBar
+  title={
+    <>
+      <span style={{ fontSize: 19, letterSpacing: 1 }}>ATLAS</span>
+      {" "}薬品在庫・廃液管理システム
+    </>
+  }
+  subtitle="Agent Tracking, Liquid-effluent Administration System"
+/>
+
             <HazardStripe height={4} />
 
             <div style={{ display: "flex", gap: 6, padding: "12px 16px 0 16px" }}>
