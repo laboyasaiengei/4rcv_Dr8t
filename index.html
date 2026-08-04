@@ -5,13 +5,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1" />
 <title>THEMIS</title>
 
-<link rel="icon" type="image/png" sizes="32x32" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAyklEQVR4nO2W0Q2AIAxE1TiBbqG76KwMwxjMoF8kaIBeS7U/3J8m2seFXjsu23ENhposi3eAZoDg3RC8swPQ0Cz5KJ563c/sM0cjpw2pQhIQCKD0Y+57NgB64igJSBFAYmfwjg0huoQlrfv5cAWBr7ZhesvRfn8XpSBUHUCLpoKDSNLjqgBfqQPAAK1TrxmAI07bVgHSFEO74F2YAlHNgVwUUyKnYS3LNYYR6QCydHw2jnNCHFFfSCiQ31ayGoRU5knY5ICGzB3oADcaeXiboA+EEgAAAABJRU5ErkJggg==" />
-<link rel="apple-touch-icon" sizes="180x180" href="data:image/png;base64,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" />
+<link rel="icon" type="image/png" sizes="32x32" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAIAAAD8GO2jAAAAwUlEQVR4nOWV3Q2AIAyExTiBbqG7yKwMwxjs4IMJMdifo0qMek/GYL82Xg83zmvXUn3T6j8EpBhSDA0BBg3gub3xafHFsyqn2pQrB2IkwLkE8gYCyF3vAjEEAJw9xYAw0J981rT4PJDQDW3T7BbZ9ce6HMM+gVw3S1k00Ox2wHV9HlCbndUAVaqVaUBeS9lFx9Icxr4HRVRwYtOUzBZD2LETCHfLDXFdSJjm0oXDYW6+MkkG/knzTa6bwKCns+gFgA1vc26l6gQV/QAAAABJRU5ErkJggg==" />
+<link rel="apple-touch-icon" sizes="180x180" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAALQAAAC0CAIAAACyr5FlAAAEbUlEQVR4nO3d3U3jQBSG4WG1FUAXSy9QK8VQBj3sxZEiK8mXhHg85+99rvYKD2deDZYh3pfXfx8DuOaP9wIQF3FAIg5IxAGJOCARByTigEQckIgDEnFAIg5IxAGJOCARByTigEQckIgDEnFAIg5IxAGJOCARByTigEQckIgDEnFA+uu9gEB+vr/sH2/vn74rCeKFz8qOTRZbJNI9jqtZnDTvo3Uct8s4aZtI0zgezGKrYSLt4ngii61WiTSK4/HbC25ETJc4nthvEqkfx8497pxI5Tgm7mvPRGrGccReNuyjYByH7mKrRErFsWznmiRSJA6X3SqfSPo4fHeodh+54wiyN0GWMV3WOALuR8Al7ZQvjuB7cGN57mv7rUxxBM/iJMs678oRR8ZxZ1zzmQRxrJzy9D8jTZ1I6DgWT/bscvQRNI4gD7WaP1QNF4fjENWl2yYSK46wjzsPurNZcK09osQRZF786m7LP46AYyIR4xlH8NGQiFscYSey5fKIZcG1HuQQR8Ap3Nb2CFkaR7Rv/lcaJhIijuBZbLknUjOOCN/tFHc/UHl0Issm5vlmn7f3z3RljAeWvfPjuGfXmvWlnuAWR8Ystm4n8vP9NSsRx0HxTrBdliXigjgmqJoIcUyz7EZkGeKYqdgRQhzzlUmEOI5yN5GVi3kOcRwrdR/R32Bc4K3CtvL4KVwKfXJsB5pxuFuXP2Xi5x46jnpOQcQvY8T/sVJPiiwMJwck4oBEHJCIAxJxQCIOSMQBiTggEQck4oBEHJCIAxJxQCIOSMQBiTggEQck4oBEHJCIAxJxQCIOSMQBiTggEQck4oBEHJCIAxJxQCIOSMQBiTggEQck4oBEHJCIYzXeYIzrTlmk6CN0HNsX7yV6Cd9VlwdG/D6iv2oyexMjQwRK6JOjgBtlxO8++smRV5z/HvZpxDFfgSwMccxUJgvDPcc0xcoYnBxT1MvCEMcuVbMwbnH8fH+lnt2yLBwfk3ieHPZtp0vk7m7VKGOM8fL672PZxdS3mqgP9wNj5axC3HOkOELcs1hv6clh0t3EBcli/WQc4jDRBnHVykUGHIhbHCPkOLbaHhgnnnGYgKMhC+MfhwkyJrLYihKH8R3Zsr+9SFHGiBbHcB3cgkcLWbIw4eIwLkO8vGjbLEzQOMzigZ5dbtbXz5iFCR2HcXnYQBkjRRwj54gzrvlMjjhMlnFnWeddmeIwwUef+rMIZ/LFYQImEnBJO2WNwwTZjyDLmC53HMN7Y6pmYdLHYYI8NFtw0ZWKxGH4tdlcpeIwh+5ckyxMwTjGMVvYKgtTMw4zcTsbljFqx2F27mvPLEz9OMwTe9w5C9MljvGbzSYL0ygOs/MjQ33KGA3jME8k0ioL0zQO82AiDbMwreMY3F7c1D0OczWR5mUM4tia/gek2REHJN4mCIk4IBEHJOKARByQiAMScUAiDkjEAYk4IBEHJOKARByQiAMScUAiDkjEAYk4IBEHJOKARByQiAMScUAiDkjEAYk4IP0HNMVIDxOD9bsAAAAASUVORK5CYII=" />
 
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 <meta name="apple-mobile-web-app-title" content="THEMIS" />
-<meta name="theme-color" content="#182524" />
+<meta name="theme-color" content="#122A4E" />
 <meta name="mobile-web-app-capable" content="yes" />
 
 <script crossorigin="anonymous" src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
@@ -105,11 +105,11 @@ const C = {
   line: "#D8DED8",
   amber: "#E2A233",
   amberDeep: "#B97A1B",
-  teal: "#6A4FC7",       // ← アイコンに近い紫
-  tealDeep: "#4B2E9E",   // ← 濃い紫
+  teal: "#3C6EA5",       // ← アイコンに近い青
+  tealDeep: "#122A4E",   // ← アイコンの紺色そのもの
   danger: "#B23B31",
   dangerBg: "#F6E4E1",
-  okBg: "#EDE8FA",       // ← teal系と組み合わせる薄色背景も紫寄りに
+  okBg: "#E6ECF3",       // ← teal系と組み合わせる薄色背景も青寄りに
   lockBg: "#EDEFEA",
 };
 
@@ -752,8 +752,8 @@ function FormulaTag({ formula, size = 14 }) {
         fontSize: size,
         fontWeight: 600,
         color: C.tealDeep,
-        background: "#E4EEEC",
-        border: `1px solid #C7DAD6`,
+        background: "#E4EAF2",
+        border: `1px solid #C6D3E3`,
         borderRadius: 5,
         padding: "2px 7px",
         lineHeight: 1.4,
@@ -1811,7 +1811,7 @@ function WasteEntryAddPage({ waste, lockedSubstanceName, onBack, onSave, onOpenC
           <span style={{ fontSize: 12.5, color: C.inkSoft }}>{waste.code}　{waste.name}</span>
         </div>
 
-        <div style={{ display: "flex", alignItems: "flex-start", gap: 8, background: C.okBg, border: `1px solid #C7DAD6`, borderRadius: 10, padding: "10px 13px", marginBottom: 20 }}>
+        <div style={{ display: "flex", alignItems: "flex-start", gap: 8, background: C.okBg, border: `1px solid #C6D3E3`, borderRadius: 10, padding: "10px 13px", marginBottom: 20 }}>
           <Info size={15} color={C.tealDeep} style={{ marginTop: 1, flexShrink: 0 }} />
           <span style={{ fontSize: 12.5, color: C.tealDeep, lineHeight: 1.6 }}>
             濃度は <b>g/L</b> でご記入ください。日付・氏名・使用量・濃度(g/L)はすべて必須項目です。
@@ -1916,7 +1916,7 @@ function ConcentrationCalcPage({ onBack }) {
     <div>
       <TopBar title="g/L 計算ツール" onBack={onBack} />
       <div style={{ padding: 16 }}>
-        <div style={{ display: "flex", alignItems: "flex-start", gap: 8, background: C.okBg, border: `1px solid #C7DAD6`, borderRadius: 10, padding: "10px 13px", marginBottom: 20 }}>
+        <div style={{ display: "flex", alignItems: "flex-start", gap: 8, background: C.okBg, border: `1px solid #C6D3E3`, borderRadius: 10, padding: "10px 13px", marginBottom: 20 }}>
           <Info size={15} color={C.tealDeep} style={{ marginTop: 1, flexShrink: 0 }} />
           <span style={{ fontSize: 12.5, color: C.tealDeep, lineHeight: 1.6 }}>
             分子量・物質量(mol)・体積(mL) から、廃液記録に入力する濃度(g/L)を計算します。
