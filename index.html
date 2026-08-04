@@ -321,6 +321,16 @@ const initialWasteCategories = [
       { id: "b5f-1", date: "2026-06-25", personName: "杉山", substanceName: "ホルムアルデヒド", concentrationGL: 39.96, volumeMl: 500 },
     ],
   },
+  {
+    id: "a5strong",
+    code: "A-5強",
+    name: "強酸系廃液（pH2以下）",
+    note: "廃酸溶液（HCl・H2SO4・HNO3の無機酸廃液）",
+    color: "#8E3B33",
+    disposal: DISPOSAL_POLICY,
+    tankStartDate: null,
+    entries: [],
+  },
 ];
 
 /* ------------------------------------------------------------------ */
@@ -930,16 +940,22 @@ function InventoryTab({ chemicals, onRecord, onAdd, onDelete }) {
 /*  ホーム：廃液タブ（分類＝タンクごと／コードを主役に表示）                  */
 /* ------------------------------------------------------------------ */
 
-function WasteTab({ wasteCategories, onOpenWaste, onOpenCalc, onOpenArchive }) {
+function WasteTab({ wasteCategories, onOpenWaste, onOpenCalc, onOpenArchive, onAddWaste }) {
   const sorted = useMemo(
     () => wasteCategories.filter((w) => !w.disposed).sort(compareWasteCode),
     [wasteCategories]
   );
   return (
     <div style={{ padding: 16 }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8, flexWrap: "wrap", gap: 6 }}>
         <SectionLabel>廃液分類一覧（タンク別）</SectionLabel>
         <div style={{ display: "flex", gap: 6 }}>
+          <button
+            onClick={onAddWaste}
+            style={{ border: `1.5px solid ${C.line}`, background: C.paper, color: C.ink, fontSize: 11.5, fontWeight: 700, borderRadius: 8, padding: "6px 10px", cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}
+          >
+            <Plus size={13} /> 新規タンク
+          </button>
           <button
             onClick={onOpenArchive}
             style={{ border: `1.5px solid ${C.line}`, background: C.paper, color: C.ink, fontSize: 11.5, fontWeight: 700, borderRadius: 8, padding: "6px 10px", cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}
@@ -981,6 +997,92 @@ function WasteTab({ wasteCategories, onOpenWaste, onOpenCalc, onOpenArchive }) {
   );
 }
      
+/* ------------------------------------------------------------------ */
+/*  廃液タンク・新規追加ページ                                          */
+/* ------------------------------------------------------------------ */
+
+const WASTE_COLOR_PRESETS = [
+  "#5B4B7A", C.amberDeep, "#D8B65C", "#7A4A3A", C.teal, "#B97A6B", "#8E3B33", C.tealDeep,
+];
+
+function AddWasteCategoryPage({ onBack, onSave }) {
+  const [code, setCode] = useState("");
+  const [name, setName] = useState("");
+  const [note, setNote] = useState("");
+  const [color, setColor] = useState(WASTE_COLOR_PRESETS[0]);
+
+  const canSave = code.trim() && name.trim() && color;
+
+  const inputStyle = {
+    width: "100%",
+    border: `1.5px solid ${C.line}`,
+    borderRadius: 10,
+    padding: "10px 13px",
+    fontSize: 14.5,
+    color: C.ink,
+    fontFamily: "'Inter', sans-serif",
+    boxSizing: "border-box",
+  };
+
+  const handleSave = () => {
+    if (!canSave) return;
+    onSave({ code: code.trim(), name: name.trim(), note: note.trim(), color });
+  };
+
+  return (
+    <div>
+      <TopBar title="タンクを新規追加" onBack={onBack} />
+      <div style={{ padding: 16 }}>
+        <SectionLabel>分類コード</SectionLabel>
+        <input style={{ ...inputStyle, marginBottom: 16, fontFamily: "'Roboto Mono', monospace" }} value={code} onChange={(e) => setCode(e.target.value)} placeholder="例：A-3強" />
+
+        <SectionLabel>分類名</SectionLabel>
+        <input style={{ ...inputStyle, marginBottom: 16 }} value={name} onChange={(e) => setName(e.target.value)} placeholder="例：強酸系廃液（pH2以下）" />
+
+        <SectionLabel>補足（任意）</SectionLabel>
+        <textarea
+          value={note}
+          onChange={(e) => setNote(e.target.value)}
+          placeholder="例：廃酸溶液（HCl・H2SO4・HNO3の無機酸廃液）"
+          rows={2}
+          style={{ ...inputStyle, marginBottom: 20, resize: "none" }}
+        />
+
+        <SectionLabel>タグの色</SectionLabel>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginBottom: 8 }}>
+          {WASTE_COLOR_PRESETS.map((c) => {
+            const active = color === c;
+            return (
+              <button
+                key={c}
+                onClick={() => setColor(c)}
+                style={{
+                  width: 34, height: 34, borderRadius: "50%", background: c, cursor: "pointer",
+                  border: active ? `3px solid ${C.ink}` : `1.5px solid ${C.line}`,
+                  display: "flex", alignItems: "center", justifyContent: "center", padding: 0,
+                }}
+              >
+                {active && <Check size={15} color="#fff" />}
+              </button>
+            );
+          })}
+        </div>
+        <div style={{ fontSize: 11.5, color: C.inkSoft, marginBottom: 20 }}>
+          新規タンクは未使用（タンク使用開始日なし）として登録されます
+        </div>
+
+        <button
+          onClick={handleSave}
+          disabled={!canSave}
+          style={{ width: "100%", border: "none", background: canSave ? C.ink : "#B7C0BC", color: "#fff", fontSize: 15, fontWeight: 600, borderRadius: 12, padding: "13px", cursor: canSave ? "pointer" : "not-allowed", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}
+        >
+          <Plus size={16} /> 追加する
+        </button>
+      </div>
+    </div>
+  );
+}
+
 /* ------------------------------------------------------------------ */
 /*  廃液タンク・アーカイブ一覧ページ（処分済みのタンクのみ表示）             */
 /* ------------------------------------------------------------------ */
@@ -2047,6 +2149,27 @@ const handleDisposeWaste = (waste) => {
   });
 };
 
+const handleAddWasteCategory = ({ code, name, note, color }) => {
+  setPasscodeGate({
+    title: "タンクの新規追加",
+    message: `次の廃液タンクを新規追加します。\n\n${code} ${name}`,
+    onCancel: () => setPasscodeGate(null),
+    onConfirm: async () => {
+      const newId = "w_" + Date.now();
+      await db.collection("wasteCategories").doc(newId).set({
+        code,
+        name,
+        note,
+        color,
+        disposal: DISPOSAL_POLICY,
+        tankStartDate: null,
+      });
+      setPasscodeGate(null);
+      goHome("waste");
+    },
+  });
+};
+
 const handleDeleteWasteCategories = (wastes) => {
   if (!wastes || wastes.length === 0) return Promise.resolve(false);
   return new Promise((resolve) => {
@@ -2154,6 +2277,7 @@ const handleDeleteWasteCategories = (wastes) => {
                    onOpenWaste={(w) => push({ view: "waste", wasteId: w.id })}
                    onOpenCalc={() => push({ view: "calc" })}
                    onOpenArchive={() => push({ view: "wasteArchive" })}
+                   onAddWaste={() => push({ view: "addWaste" })}
                  />
                )}
             </div>
@@ -2231,6 +2355,10 @@ const handleDeleteWasteCategories = (wastes) => {
 
         {current.view === "addChemical" && (
           <AddChemicalPage wasteCategories={wasteCategories} onBack={pop} onSave={handleAddChemical} />
+        )}
+
+        {current.view === "addWaste" && (
+          <AddWasteCategoryPage onBack={pop} onSave={handleAddWasteCategory} />
         )}
       </div>
       {passcodeGate && (
