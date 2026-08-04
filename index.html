@@ -831,10 +831,12 @@ function PasscodeGate({ authError }) {
     <div style={{ fontFamily: "'Inter', sans-serif", background: C.bg, minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
       <style>{FONT_IMPORT}</style>
       <div style={{ width: "100%", maxWidth: 340, background: C.paper, border: `1px solid ${C.line}`, borderRadius: 16, padding: "28px 22px 26px" }}>
-        <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 16, color: C.tealDeep, marginBottom: 4 }}>ATLAS 薬品在庫・廃液管理</div>
+        <div style={{ fontWeight: 700, marginBottom: 4 }}>
+          <span style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 14, color: C.tealDeep }}>ATLAS</span>
+          <span style={{ fontSize: 16, color: C.tealDeep }}> 薬品在庫・廃液管理</span>
+        </div>
         <SectionLabel>ログインパスコード</SectionLabel>
-        <div style={{ fontSize: 12.5, color: C.inkSoft, marginBottom: 4 }}>ログインパスコードを入力（6桁）</div>
-
+ 
         <PinDots length={value.length} minSlots={codeLen} shake={shake} />
         <div style={{ minHeight: 16, textAlign: "center", marginBottom: 6 }}>
           {error && <span style={{ fontSize: 12, color: C.danger }}>{error}</span>}
