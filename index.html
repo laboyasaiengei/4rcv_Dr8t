@@ -541,6 +541,19 @@ function compareWasteCode(a, b) {
 function slugify(name) {
   return "loc_" + name.trim().toLowerCase().replace(/\s+/g, "_") + "_" + Math.random().toString(36).slice(2, 6);
 }
+     
+const ADMIN_PASSCODE = "1234"; // ← 実際運用するパスコードに変更してください
+
+function verifyPasscode(actionLabel) {
+  if (typeof window === "undefined" || !window.prompt) return true;
+  const input = window.prompt(`${actionLabel}にはパスコードの入力が必要です。`);
+  if (input === null) return false; // キャンセル
+  if (input !== ADMIN_PASSCODE) {
+    if (window.alert) window.alert("パスコードが違います。");
+    return false;
+  }
+  return true;
+}
 
 /* ------------------------------------------------------------------ */
 /*  共通パーツ                                                          */
@@ -948,42 +961,137 @@ function WasteTab({ wasteCategories, onOpenWaste, onOpenCalc, onOpenArchive }) {
 /*  廃液タンク・アーカイブ一覧ページ（処分済みのタンクのみ表示）             */
 /* ------------------------------------------------------------------ */
 
-function WasteArchivePage({ wasteCategories, onBack, onOpenWaste }) {
+const ARCHIVE_PAGE_SIZE = 20;
+
+function WasteArchivePage({ wasteCategories, onBack, onOpenWaste, onDeleteWastes }) {
   const disposed = useMemo(
-    () => wasteCategories.filter((w) => w.disposed).sort((a, b) => (b.disposedAt || "").localeCompare(a.disposedAt || "")),
+    () => [...wasteCategories].filter((w) => w.disposed).sort(compareWasteCode),
     [wasteCategories]
   );
+
+  const [page, setPage] = useState(0);
+  const [selectMode, setSelectMode] = useState(false);
+  const [selected, setSelected] = useState(() => new Set());
+
+  const totalPages = Math.max(1, Math.ceil(disposed.length / ARCHIVE_PAGE_SIZE));
+  const safePage = Math.min(page, totalPages - 1);
+  const pageItems = disposed.slice(safePage * ARCHIVE_PAGE_SIZE, safePage * ARCHIVE_PAGE_SIZE + ARCHIVE_PAGE_SIZE);
+
+  const toggleSelect = (id) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const handleRowClick = (w) => {
+    if (selectMode) toggleSelect(w.id);
+    else onOpenWaste(w);
+  };
+
+  const handleDeleteSelected = async () => {
+    const targets = disposed.filter((w) => selected.has(w.id));
+    if (targets.length === 0) return;
+    const ok = await onDeleteWastes(targets);
+    if (ok) {
+      setSelected(new Set());
+      setSelectMode(false);
+    }
+  };
+
   return (
     <div>
       <TopBar title="廃液タンク・アーカイブ" onBack={onBack} />
-      <div style={{ padding: 16 }}>
-        <SectionLabel>処分済みのタンク（{disposed.length}）</SectionLabel>
+      <div style={{ padding: 16, paddingBottom: 100 }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+          <SectionLabel>処分済みのタンク（{disposed.length}）</SectionLabel>
+          <button
+            onClick={() => {
+              setSelectMode((v) => !v);
+              setSelected(new Set());
+            }}
+            style={{ border: `1.5px solid ${C.line}`, background: selectMode ? C.ink : C.paper, color: selectMode ? "#fff" : C.ink, fontSize: 11.5, fontWeight: 700, borderRadius: 8, padding: "6px 10px", cursor: "pointer" }}
+          >
+            {selectMode ? "選択をやめる" : "選択して削除"}
+          </button>
+        </div>
+
         {disposed.length === 0 && (
           <div style={{ textAlign: "center", padding: "30px 12px", color: C.inkSoft, fontSize: 13 }}>
             処分済みのタンクはまだありません。
           </div>
         )}
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {disposed.map((w) => (
-            <button
-              key={w.id}
-              onClick={() => onOpenWaste(w)}
-              style={{ textAlign: "left", background: C.paper, border: `1px solid ${C.line}`, borderRadius: 12, padding: 0, overflow: "hidden", cursor: "pointer", display: "flex" }}
-            >
-              <div style={{ width: 6, background: w.color, flexShrink: 0 }} />
-              <div style={{ flex: 1, padding: "13px 14px", display: "flex", alignItems: "center", gap: 10 }}>
-                <div style={{ flex: 1 }}>
-                  <WasteCodeTag waste={w} />
-                  <div style={{ fontSize: 12, color: C.inkSoft, marginTop: 6, display: "flex", alignItems: "center", gap: 4 }}>
-                    <Lock size={11} /> 処分済み（{w.disposedAt || "日付不明"}）
+
+        <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 16 }}>
+          {pageItems.map((w) => {
+            const isSelected = selected.has(w.id);
+            return (
+              <button
+                key={w.id}
+                onClick={() => handleRowClick(w)}
+                style={{ textAlign: "left", background: C.paper, border: `1px solid ${isSelected ? C.danger : C.line}`, borderRadius: 12, padding: 0, overflow: "hidden", cursor: "pointer", display: "flex" }}
+              >
+                <div style={{ width: 6, background: w.color, flexShrink: 0 }} />
+                <div style={{ flex: 1, padding: "13px 14px", display: "flex", alignItems: "center", gap: 10 }}>
+                  {selectMode && (
+                    <div
+                      style={{
+                        width: 20, height: 20, borderRadius: 5, border: `1.5px solid ${isSelected ? C.danger : C.line}`,
+                        background: isSelected ? C.danger : "transparent",
+                        display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+                      }}
+                    >
+                      {isSelected && <Check size={13} color="#fff" />}
+                    </div>
+                  )}
+                  <div style={{ flex: 1 }}>
+                    <WasteCodeTag waste={w} />
+                    <div style={{ fontSize: 12, color: C.inkSoft, marginTop: 6, display: "flex", alignItems: "center", gap: 4 }}>
+                      <Lock size={11} /> 処分済み（{w.disposedAt || "日付不明"}）
+                    </div>
                   </div>
+                  {!selectMode && <Chevron />}
                 </div>
-                <Chevron />
-              </div>
-            </button>
-          ))}
+              </button>
+            );
+          })}
         </div>
+
+        {totalPages > 1 && (
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 14, marginBottom: 10 }}>
+            <button
+              onClick={() => setPage((p) => Math.max(0, p - 1))}
+              disabled={safePage === 0}
+              style={{ border: `1px solid ${C.line}`, background: C.paper, color: safePage === 0 ? C.line : C.ink, fontSize: 12, fontWeight: 700, borderRadius: 8, padding: "6px 12px", cursor: safePage === 0 ? "default" : "pointer" }}
+            >
+              ‹ 前へ
+            </button>
+            <span style={{ fontSize: 12, color: C.inkSoft, fontFamily: "'IBM Plex Mono', monospace" }}>
+              {safePage + 1} / {totalPages}
+            </span>
+            <button
+              onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+              disabled={safePage >= totalPages - 1}
+              style={{ border: `1px solid ${C.line}`, background: C.paper, color: safePage >= totalPages - 1 ? C.line : C.ink, fontSize: 12, fontWeight: 700, borderRadius: 8, padding: "6px 12px", cursor: safePage >= totalPages - 1 ? "default" : "pointer" }}
+            >
+              次へ ›
+            </button>
+          </div>
+        )}
       </div>
+
+      {selectMode && selected.size > 0 && (
+        <div style={{ position: "sticky", bottom: 0, background: C.paper, borderTop: `1px solid ${C.line}`, padding: "14px 16px" }}>
+          <button
+            onClick={handleDeleteSelected}
+            style={{ width: "100%", border: "none", background: C.danger, color: "#fff", fontSize: 14, fontWeight: 700, borderRadius: 12, padding: "13px", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}
+          >
+            <Trash2 size={16} /> 選択した{selected.size}件を削除
+          </button>
+        </div>
+      )}
     </div>
   );
 }
@@ -1902,11 +2010,27 @@ const handleDisposeWaste = async (waste) => {
   if (typeof window !== "undefined" && window.confirm) {
     if (!window.confirm(`「${waste.code} ${waste.name}」のタンクを処分済みにしますか？\nこの操作の後は編集ができなくなります。`)) return;
   }
+  if (!verifyPasscode("処分済みへの変更")) return;
   await db.collection("wasteCategories").doc(waste.id).update({
     disposed: true,
     disposedAt: new Date().toISOString().slice(0, 10),
   });
   goHome("waste");
+};
+     const handleDeleteWasteCategories = async (wastes) => {
+  if (!wastes || wastes.length === 0) return false;
+  if (typeof window !== "undefined" && window.confirm) {
+    const names = wastes.map((w) => `・${w.code} ${w.name}`).join("\n");
+    if (!window.confirm(`次のタンクをアーカイブから完全に削除します。投入記録もすべて削除され、元に戻せません。\n\n${names}\n\nよろしいですか？`)) return false;
+  }
+  if (!verifyPasscode("アーカイブの削除")) return false;
+  const batch = db.batch();
+  wastes.forEach((w) => {
+    batch.delete(db.collection("wasteCategories").doc(w.id));
+    w.entries.forEach((e) => batch.delete(db.collection("wasteEntries").doc(e.id)));
+  });
+  await batch.commit();
+  return true;
 };
      
   const findChem = (id) => chemicals.find((c) => c.id === id);
@@ -2029,6 +2153,7 @@ const handleDisposeWaste = async (waste) => {
              wasteCategories={wasteCategories}
              onBack={pop}
              onOpenWaste={(w) => push({ view: "waste", wasteId: w.id })}
+             onDeleteWastes={handleDeleteWasteCategories}
            />
          )}
            
