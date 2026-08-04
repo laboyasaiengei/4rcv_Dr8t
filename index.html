@@ -790,7 +790,7 @@ function PasscodeGate({ authError }) {
   const [error, setError] = useState("");
   const [shake, setShake] = useState(false);
   const [loading, setLoading] = useState(false);
-  const maxLen = 10;
+  const codeLen = 6;
 
   const triggerShake = (msg) => {
     setError(msg);
@@ -802,7 +802,7 @@ function PasscodeGate({ authError }) {
   };
 
   const submit = (code) => {
-    if (!code || loading) return;
+    if (code.length !== codeLen || loading) return;
     setLoading(true);
     setError("");
     signInWithPasscode(code)
@@ -814,10 +814,11 @@ function PasscodeGate({ authError }) {
   };
 
   const handleDigit = (d) => {
-    if (value.length >= maxLen || loading) return;
+    if (value.length >= codeLen || loading) return;
     const next = value + d;
     setValue(next);
     setError("");
+    if (next.length === codeLen) submit(next);
   };
 
   const handleBackspace = () => {
@@ -832,9 +833,9 @@ function PasscodeGate({ authError }) {
       <div style={{ width: "100%", maxWidth: 340, background: C.paper, border: `1px solid ${C.line}`, borderRadius: 16, padding: "28px 22px 26px" }}>
         <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 16, color: C.tealDeep, marginBottom: 4 }}>ATLAS 薬品在庫・廃液管理</div>
         <SectionLabel>ログインパスコード</SectionLabel>
-        <div style={{ fontSize: 12.5, color: C.inkSoft, marginBottom: 4 }}>ログインパスコードを入力</div>
+        <div style={{ fontSize: 12.5, color: C.inkSoft, marginBottom: 4 }}>ログインパスコードを入力（6桁）</div>
 
-        <PinDots length={value.length} minSlots={4} shake={shake} />
+        <PinDots length={value.length} minSlots={codeLen} shake={shake} />
         <div style={{ minHeight: 16, textAlign: "center", marginBottom: 6 }}>
           {error && <span style={{ fontSize: 12, color: C.danger }}>{error}</span>}
           {authError && !error && (
@@ -844,13 +845,9 @@ function PasscodeGate({ authError }) {
 
         <NumericKeypad onDigit={handleDigit} onBackspace={handleBackspace} disabled={loading} />
 
-        <button
-          onClick={() => submit(value)}
-          disabled={loading || value.length < 4}
-          style={{ width: "100%", marginTop: 20, border: "none", background: loading || value.length < 4 ? "#B7C0BC" : C.tealDeep, color: "#fff", fontSize: 15, fontWeight: 600, borderRadius: 12, padding: "13px", cursor: loading || value.length < 4 ? "not-allowed" : "pointer" }}
-        >
-          {loading ? "確認中..." : "ログインする"}
-        </button>
+        {loading && (
+          <div style={{ textAlign: "center", marginTop: 16, fontSize: 12.5, color: C.inkSoft }}>確認中...</div>
+        )}
       </div>
     </div>
   );
