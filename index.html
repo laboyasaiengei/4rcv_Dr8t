@@ -2243,18 +2243,18 @@ const handleDeleteWasteCategories = (wastes) => {
           <AddChemicalPage wasteCategories={wasteCategories} onBack={pop} onSave={handleAddChemical} />
         )}
       </div>
+      {passcodeGate && (
+        <PasscodeModal
+          title={passcodeGate.title}
+          message={passcodeGate.message}
+          onCancel={passcodeGate.onCancel}
+          onSubmit={passcodeGate.onConfirm}
+        />
+      )}
     </div>
   );
 }
-{passcodeGate && (
-  <PasscodeModal
-    title={passcodeGate.title}
-    message={passcodeGate.message}
-    onCancel={passcodeGate.onCancel}
-    onSubmit={passcodeGate.onConfirm}
-  />
-)}
-     
+
 ReactDOM.createRoot(document.getElementById('root')).render(<ChemStockApp />);
 document.getElementById('boot-error').style.display = 'none';
 </script>
