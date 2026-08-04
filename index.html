@@ -30,6 +30,8 @@
   input, textarea { font-family: inherit; }
   #boot-error { display: none; }
   @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+  @keyframes shake { 10%, 90% { transform: translateX(-2px); } 20%, 80% { transform: translateX(4px); } 30%, 50%, 70% { transform: translateX(-8px); } 40%, 60% { transform: translateX(8px); } }
+  @keyframes keyPress { 0% { transform: scale(1); } 50% { transform: scale(0.9); } 100% { transform: scale(1); } }
 </style>
 </head>
 <body>
@@ -84,6 +86,7 @@ function Check(props) { return (<IconBase {...props}><polyline points="20 6 9 17
 function Calculator(props) { return (<IconBase {...props}><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="8" y1="6" x2="16" y2="6"/><line x1="8" y1="10" x2="8" y2="10"/><line x1="12" y1="10" x2="12" y2="10"/><line x1="16" y1="10" x2="16" y2="10"/><line x1="8" y1="14" x2="8" y2="14"/><line x1="12" y1="14" x2="12" y2="14"/><line x1="16" y1="14" x2="16" y2="14"/><line x1="8" y1="18" x2="8" y2="18"/><line x1="12" y1="18" x2="12" y2="18"/><line x1="16" y1="18" x2="16" y2="18"/></IconBase>); }
 function Info(props) { return (<IconBase {...props}><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></IconBase>); }
 function Archive(props) { return (<IconBase {...props}><rect x="2" y="3" width="20" height="5" rx="1"/><path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8"/><path d="M10 12h4"/></IconBase>); }
+function Backspace(props) { return (<IconBase {...props}><path d="M21 4H8l-7 8 7 8h13a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2z"/><line x1="18" y1="9" x2="12" y2="15"/><line x1="12" y1="9" x2="18" y2="15"/></IconBase>); }
 
 /* ------------------------------------------------------------------ */
 /*  デザイントークン                                                    */
@@ -543,47 +546,126 @@ function slugify(name) {
 }
      
 const DEFAULT_ADMIN_PASSCODE = "1234"; // Firestore(meta/settings)にまだ何も保存されていないときの初期値
+
+/* パスコード入力用のドット表示（アプリのPINコード画面のような見た目） */
+function PinDots({ length, minSlots = 6, shake }) {
+  const slots = Math.max(minSlots, length);
+  return (
+    <div style={{ display: "flex", justifyContent: "center", gap: 14, margin: "22px 0 6px", animation: shake ? "shake 0.4s" : "none" }}>
+      {Array.from({ length: slots }).map((_, i) => (
+        <div
+          key={i}
+          style={{
+            width: 14,
+            height: 14,
+            borderRadius: "50%",
+            border: `2px solid ${C.tealDeep}`,
+            background: i < length ? C.tealDeep : "transparent",
+            transition: "background 0.12s",
+          }}
+        />
+      ))}
+    </div>
+  );
+}
+
+/* アプリらしい専用の数字キーパッド（1-9・0・削除） */
+function NumericKeypad({ onDigit, onBackspace, disabled }) {
+  const keys = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "", "0", "del"];
+  const btnBase = {
+    width: 64,
+    height: 64,
+    borderRadius: "50%",
+    border: `1.5px solid ${C.line}`,
+    background: C.paper,
+    color: C.ink,
+    fontSize: 22,
+    fontWeight: 600,
+    fontFamily: "'Roboto Mono', monospace",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    cursor: disabled ? "default" : "pointer",
+    opacity: disabled ? 0.5 : 1,
+    padding: 0,
+  };
+  return (
+    <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12, maxWidth: 260, margin: "0 auto" }}>
+      {keys.map((k, i) => {
+        if (k === "") return <div key={i} />;
+        if (k === "del") {
+          return (
+            <button key={i} type="button" onClick={onBackspace} disabled={disabled} style={{ ...btnBase, background: "transparent", border: "none", justifySelf: "center" }}>
+              <Backspace size={20} color={C.inkSoft} />
+            </button>
+          );
+        }
+        return (
+          <button key={i} type="button" onClick={() => onDigit(k)} disabled={disabled} style={{ ...btnBase, justifySelf: "center" }}>
+            {k}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 function PasscodeModal({ title, message, onCancel, onSubmit, correctPasscode }) {
   const [value, setValue] = useState("");
   const [error, setError] = useState("");
+  const [shake, setShake] = useState(false);
+  const maxLen = 8;
 
-  const handleSubmit = () => {
-    if (value === correctPasscode) {
-      setError("");
-      onSubmit();
-    } else {
-      setError("パスコードが違います。");
+  const triggerShake = (msg) => {
+    setError(msg);
+    setShake(true);
+    setTimeout(() => {
+      setShake(false);
       setValue("");
+    }, 350);
+  };
+
+  const handleDigit = (d) => {
+    if (value.length >= maxLen) return;
+    const next = value + d;
+    setValue(next);
+    setError("");
+    if (next.length >= (correctPasscode || "").length) {
+      if (next === correctPasscode) {
+        onSubmit();
+      } else {
+        triggerShake("パスコードが違います。");
+      }
     }
+  };
+
+  const handleBackspace = () => {
+    setValue((v) => v.slice(0, -1));
+    setError("");
   };
 
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(24,37,36,0.55)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 50, padding: 20 }}>
-      <div style={{ background: C.paper, borderRadius: 16, padding: 20, width: "100%", maxWidth: 340 }}>
+      <div style={{ background: C.paper, borderRadius: 16, padding: "20px 20px 26px", width: "100%", maxWidth: 340 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
           <Lock size={16} color={C.tealDeep} />
           <div style={{ fontWeight: 700, fontSize: 15, color: C.ink }}>{title}</div>
         </div>
-        <div style={{ fontSize: 13, color: C.inkSoft, lineHeight: 1.6, marginBottom: 14, whiteSpace: "pre-wrap" }}>{message}</div>
-        <input
-          type="password"
-          inputMode="numeric"
-          autoFocus
-          value={value}
-          onChange={(e) => { setValue(e.target.value); setError(""); }}
-          onKeyDown={(e) => { if (e.key === "Enter") handleSubmit(); }}
-          placeholder="パスコード"
-          style={{ width: "100%", border: `1.5px solid ${error ? C.danger : C.line}`, borderRadius: 10, padding: "11px 14px", fontSize: 16, fontFamily: "'Roboto Mono', monospace", marginBottom: error ? 6 : 16, boxSizing: "border-box" }}
-        />
-        {error && <div style={{ fontSize: 12, color: C.danger, marginBottom: 10 }}>{error}</div>}
-        <div style={{ display: "flex", gap: 8 }}>
-          <button onClick={onCancel} style={{ flex: 1, border: `1px solid ${C.line}`, background: "transparent", color: C.inkSoft, fontSize: 14, fontWeight: 600, borderRadius: 10, padding: "11px", cursor: "pointer" }}>
-            キャンセル
-          </button>
-          <button onClick={handleSubmit} style={{ flex: 1, border: "none", background: C.tealDeep, color: "#fff", fontSize: 14, fontWeight: 600, borderRadius: 10, padding: "11px", cursor: "pointer" }}>
-            確認する
-          </button>
+        <div style={{ fontSize: 13, color: C.inkSoft, lineHeight: 1.6, whiteSpace: "pre-wrap" }}>{message}</div>
+
+        <PinDots length={value.length} minSlots={Math.max(4, (correctPasscode || "").length)} shake={shake} />
+        <div style={{ minHeight: 16, textAlign: "center", marginBottom: 10 }}>
+          {error && <span style={{ fontSize: 12, color: C.danger }}>{error}</span>}
         </div>
+
+        <NumericKeypad onDigit={handleDigit} onBackspace={handleBackspace} />
+
+        <button
+          onClick={onCancel}
+          style={{ width: "100%", marginTop: 20, border: `1px solid ${C.line}`, background: "transparent", color: C.inkSoft, fontSize: 14, fontWeight: 600, borderRadius: 10, padding: "11px", cursor: "pointer" }}
+        >
+          キャンセル
+        </button>
       </div>
     </div>
   );
@@ -1094,73 +1176,84 @@ function AddWasteCategoryPage({ onBack, onSave }) {
 /* ------------------------------------------------------------------ */
 
 function ChangePasscodePage({ onBack, onSave }) {
+  const [step, setStep] = useState("enter"); // "enter" | "confirm"
+  const [firstCode, setFirstCode] = useState("");
   const [value, setValue] = useState("");
-  const [confirmValue, setConfirmValue] = useState("");
   const [error, setError] = useState("");
+  const [shake, setShake] = useState(false);
+  const minLen = 4;
+  const maxLen = 8;
 
-  const inputStyle = {
-    width: "100%",
-    border: `1.5px solid ${C.line}`,
-    borderRadius: 10,
-    padding: "10px 13px",
-    fontSize: 16,
-    fontFamily: "'Roboto Mono', monospace",
-    color: C.ink,
-    boxSizing: "border-box",
+  const triggerShake = (msg) => {
+    setError(msg);
+    setShake(true);
+    setTimeout(() => setShake(false), 350);
   };
 
-  const canSave = value.trim().length >= 4 && value === confirmValue;
-
-  const handleSave = () => {
-    if (value.trim().length < 4) {
-      setError("4文字以上で入力してください。");
-      return;
-    }
-    if (value !== confirmValue) {
-      setError("確認用パスコードが一致しません。");
-      return;
-    }
+  const handleDigit = (d) => {
+    if (value.length >= maxLen) return;
+    setValue((v) => v + d);
     setError("");
-    onSave(value.trim());
+  };
+
+  const handleBackspace = () => {
+    setValue((v) => v.slice(0, -1));
+    setError("");
+  };
+
+  const handleConfirm = () => {
+    if (value.length < minLen) {
+      triggerShake(`${minLen}桁以上で入力してください。`);
+      return;
+    }
+    if (step === "enter") {
+      setFirstCode(value);
+      setValue("");
+      setError("");
+      setStep("confirm");
+    } else {
+      if (value === firstCode) {
+        onSave(value);
+      } else {
+        triggerShake("パスコードが一致しません。最初からやり直してください。");
+        setTimeout(() => {
+          setValue("");
+          setFirstCode("");
+          setStep("enter");
+        }, 400);
+      }
+    }
   };
 
   return (
     <div>
       <TopBar title="パスコードの変更" onBack={onBack} />
       <div style={{ padding: 16 }}>
-        <SectionLabel>新しいパスコード</SectionLabel>
-        <input
-          type="password"
-          inputMode="numeric"
-          value={value}
-          onChange={(e) => { setValue(e.target.value); setError(""); }}
-          placeholder="新しいパスコード（4文字以上）"
-          style={{ ...inputStyle, marginBottom: 16 }}
-        />
-
-        <SectionLabel>確認のためもう一度入力</SectionLabel>
-        <input
-          type="password"
-          inputMode="numeric"
-          value={confirmValue}
-          onChange={(e) => { setConfirmValue(e.target.value); setError(""); }}
-          placeholder="もう一度入力"
-          style={{ ...inputStyle, marginBottom: 8 }}
-        />
-
-        {error && <div style={{ fontSize: 12, color: C.danger, marginBottom: 10 }}>{error}</div>}
-
-        <div style={{ fontSize: 11.5, color: C.inkSoft, marginBottom: 20 }}>
-          変更後は、処分・削除・新規タンク追加などすべての操作でこの新しいパスコードが必要になります。
+        <div style={{ textAlign: "center", marginTop: 16, fontSize: 14, fontWeight: 600, color: C.ink }}>
+          {step === "enter" ? "新しいパスコードを入力" : "確認のためもう一度入力"}
+        </div>
+        <div style={{ textAlign: "center", fontSize: 11.5, color: C.inkSoft, marginTop: 4 }}>
+          {minLen}〜{maxLen}桁の数字
         </div>
 
+        <PinDots length={value.length} minSlots={minLen} shake={shake} />
+        <div style={{ minHeight: 16, textAlign: "center", marginBottom: 6 }}>
+          {error && <span style={{ fontSize: 12, color: C.danger }}>{error}</span>}
+        </div>
+
+        <NumericKeypad onDigit={handleDigit} onBackspace={handleBackspace} />
+
         <button
-          onClick={handleSave}
-          disabled={!canSave}
-          style={{ width: "100%", border: "none", background: canSave ? C.ink : "#B7C0BC", color: "#fff", fontSize: 15, fontWeight: 600, borderRadius: 12, padding: "13px", cursor: canSave ? "pointer" : "not-allowed", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}
+          onClick={handleConfirm}
+          disabled={value.length < minLen}
+          style={{ width: "100%", marginTop: 22, border: "none", background: value.length >= minLen ? C.ink : "#B7C0BC", color: "#fff", fontSize: 15, fontWeight: 600, borderRadius: 12, padding: "13px", cursor: value.length >= minLen ? "pointer" : "not-allowed", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}
         >
-          <Save size={16} /> 変更を保存
+          {step === "enter" ? "次へ" : <><Save size={16} /> 変更を保存</>}
         </button>
+
+        <div style={{ fontSize: 11.5, color: C.inkSoft, marginTop: 16, textAlign: "center" }}>
+          変更後は、処分・削除・新規タンク追加などすべての操作でこの新しいパスコードが必要になります。
+        </div>
       </div>
     </div>
   );
