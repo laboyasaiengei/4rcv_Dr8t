@@ -364,7 +364,7 @@ const firebaseConfig = {
 /*    　Firestoreに触れてしまうため）                                    */
 /*  ・ユーザーには「合言葉」だけを見せ、メールアドレスは意識させない        */
 /* ------------------------------------------------------------------ */
-const LAB_LOGIN_EMAIL = "labo.yasaiengei@gmail.com"; // ★実際に作成したメールアドレスに変更してください
+const LAB_LOGIN_EMAIL = "lab-chem-app@example.com"; // ★実際に作成したメールアドレスに変更してください
 
 let db = null;
 let firebaseInitError = null;
@@ -786,56 +786,72 @@ function SectionLabel({ children }) {
 /* ------------------------------------------------------------------ */
 
 function PasscodeGate({ authError }) {
-  const [passcode, setPasscode] = useState("");
+  const [value, setValue] = useState("");
   const [error, setError] = useState("");
+  const [shake, setShake] = useState(false);
   const [loading, setLoading] = useState(false);
+  const maxLen = 10;
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    if (!passcode || loading) return;
+  const triggerShake = (msg) => {
+    setError(msg);
+    setShake(true);
+    setTimeout(() => {
+      setShake(false);
+      setValue("");
+    }, 350);
+  };
+
+  const submit = (code) => {
+    if (!code || loading) return;
     setLoading(true);
     setError("");
-    signInWithPasscode(passcode)
+    signInWithPasscode(code)
       .catch((err) => {
         console.error("login failed", err);
-        setError("合言葉が違います");
+        triggerShake("パスコードが違います。");
       })
       .finally(() => setLoading(false));
+  };
+
+  const handleDigit = (d) => {
+    if (value.length >= maxLen || loading) return;
+    const next = value + d;
+    setValue(next);
+    setError("");
+  };
+
+  const handleBackspace = () => {
+    if (loading) return;
+    setValue((v) => v.slice(0, -1));
+    setError("");
   };
 
   return (
     <div style={{ fontFamily: "'Inter', sans-serif", background: C.bg, minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
       <style>{FONT_IMPORT}</style>
-      <form onSubmit={handleSubmit} style={{ width: "100%", maxWidth: 340, background: C.paper, border: `1px solid ${C.line}`, borderRadius: 16, padding: "28px 22px" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 18 }}>
-          <div style={{ width: 30, height: 30, borderRadius: 8, background: C.ink, display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <Lock size={15} color={C.amber} />
-          </div>
-          <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 16, color: C.ink }}>ATLAS 薬品在庫・廃液管理</div>
+      <div style={{ width: "100%", maxWidth: 340, background: C.paper, border: `1px solid ${C.line}`, borderRadius: 16, padding: "28px 22px 26px" }}>
+        <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 16, color: C.tealDeep, marginBottom: 4 }}>ATLAS 薬品在庫・廃液管理</div>
+        <SectionLabel>ログインパスコード</SectionLabel>
+        <div style={{ fontSize: 12.5, color: C.inkSoft, marginBottom: 4 }}>ログインパスコードを入力</div>
+
+        <PinDots length={value.length} minSlots={4} shake={shake} />
+        <div style={{ minHeight: 16, textAlign: "center", marginBottom: 6 }}>
+          {error && <span style={{ fontSize: 12, color: C.danger }}>{error}</span>}
+          {authError && !error && (
+            <span style={{ fontSize: 12, color: C.danger }}>認証の初期化に失敗しました：{authError.message || String(authError)}</span>
+          )}
         </div>
-        <SectionLabel>合言葉</SectionLabel>
-        <input
-          type="password"
-          autoFocus
-          value={passcode}
-          onChange={(e) => setPasscode(e.target.value)}
-          placeholder="ラボの合言葉を入力"
-          style={{ width: "100%", border: `1.5px solid ${C.line}`, borderRadius: 10, padding: "11px 13px", fontSize: 15, color: C.ink, fontFamily: "'Inter', sans-serif", boxSizing: "border-box", marginBottom: 12 }}
-        />
-        {error && <div style={{ color: C.danger, fontSize: 12.5, marginBottom: 12 }}>{error}</div>}
-        {authError && !error && (
-          <div style={{ color: C.danger, fontSize: 12.5, marginBottom: 12 }}>
-            認証の初期化に失敗しました：{authError.message || String(authError)}
-          </div>
-        )}
+
+        <NumericKeypad onDigit={handleDigit} onBackspace={handleBackspace} disabled={loading} />
+
         <button
-          type="submit"
-          disabled={loading || !passcode}
-          style={{ width: "100%", border: "none", background: loading || !passcode ? "#B7C0BC" : C.ink, color: "#fff", fontSize: 15, fontWeight: 600, borderRadius: 12, padding: "13px", cursor: loading || !passcode ? "not-allowed" : "pointer" }}
+          onClick={() => submit(value)}
+          disabled={loading || value.length < 4}
+          style={{ width: "100%", marginTop: 20, border: "none", background: loading || value.length < 4 ? "#B7C0BC" : C.tealDeep, color: "#fff", fontSize: 15, fontWeight: 600, borderRadius: 12, padding: "13px", cursor: loading || value.length < 4 ? "not-allowed" : "pointer" }}
         >
-          {loading ? "確認中..." : "入室する"}
+          {loading ? "確認中..." : "ログインする"}
         </button>
-      </form>
+      </div>
     </div>
   );
 }
