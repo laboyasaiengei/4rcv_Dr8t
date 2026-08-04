@@ -26,7 +26,7 @@
 
 <style>
   html, body { margin: 0; padding: 0; background: #EEF1EC; -webkit-tap-highlight-color: transparent; }
-  * { box-sizing: border-box; font-feature-settings: "zero" 0; font-variant-numeric: normal; }
+  * { box-sizing: border-box; font-feature-settings: "zero" 1; font-variant-numeric: normal; }
   input, textarea { font-family: inherit; }
   #boot-error { display: none; }
   @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
@@ -83,8 +83,7 @@ function Plus(props) { return (<IconBase {...props}><line x1="12" y1="5" x2="12"
 function Check(props) { return (<IconBase {...props}><polyline points="20 6 9 17 4 12"/></IconBase>); }
 function Calculator(props) { return (<IconBase {...props}><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="8" y1="6" x2="16" y2="6"/><line x1="8" y1="10" x2="8" y2="10"/><line x1="12" y1="10" x2="12" y2="10"/><line x1="16" y1="10" x2="16" y2="10"/><line x1="8" y1="14" x2="8" y2="14"/><line x1="12" y1="14" x2="12" y2="14"/><line x1="16" y1="14" x2="16" y2="14"/><line x1="8" y1="18" x2="8" y2="18"/><line x1="12" y1="18" x2="12" y2="18"/><line x1="16" y1="18" x2="16" y2="18"/></IconBase>); }
 function Info(props) { return (<IconBase {...props}><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></IconBase>); }
-
-
+function Archive(props) { return (<IconBase {...props}><rect x="2" y="3" width="20" height="5" rx="1"/><path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8"/><path d="M10 12h4"/></IconBase>); }
 
 /* ------------------------------------------------------------------ */
 /*  デザイントークン                                                    */
@@ -102,11 +101,11 @@ const C = {
   line: "#D8DED8",
   amber: "#E2A233",
   amberDeep: "#B97A1B",
-  teal: "#2F6F6B",
-  tealDeep: "#1F4E4B",
+  teal: "#6A4FC7",       // ← アイコンに近い紫
+  tealDeep: "#4B2E9E",   // ← 濃い紫
   danger: "#B23B31",
   dangerBg: "#F6E4E1",
-  okBg: "#E4EEE9",
+  okBg: "#EDE8FA",       // ← teal系と組み合わせる薄色背景も紫寄りに
   lockBg: "#EDEFEA",
 };
 
@@ -567,7 +566,7 @@ function HazardStripe({ height = 6 }) {
     <div
       style={{
         height,
-        backgroundImage: `repeating-linear-gradient(135deg, ${C.amber} 0 10px, ${C.ink} 10px 20px)`,
+        background: C.tealDeep, // ← 黒黄の斜めストライプをやめて紫の単色ラインに
         opacity: 0.9,
       }}
     />
@@ -894,18 +893,29 @@ function InventoryTab({ chemicals, onRecord, onAdd, onDelete }) {
 /*  ホーム：廃液タブ（分類＝タンクごと／コードを主役に表示）                  */
 /* ------------------------------------------------------------------ */
 
-function WasteTab({ wasteCategories, onOpenWaste, onOpenCalc }) {
-  const sorted = useMemo(() => [...wasteCategories].sort(compareWasteCode), [wasteCategories]);
+function WasteTab({ wasteCategories, onOpenWaste, onOpenCalc, onOpenArchive }) {
+  const sorted = useMemo(
+    () => wasteCategories.filter((w) => !w.disposed).sort(compareWasteCode),
+    [wasteCategories]
+  );
   return (
     <div style={{ padding: 16 }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
         <SectionLabel>廃液分類一覧（タンク別）</SectionLabel>
-        <button
-          onClick={onOpenCalc}
-          style={{ border: `1.5px solid ${C.line}`, background: C.paper, color: C.ink, fontSize: 11.5, fontWeight: 700, borderRadius: 8, padding: "6px 10px", cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}
-        >
-          <Calculator size={13} /> g/L計算ツール
-        </button>
+        <div style={{ display: "flex", gap: 6 }}>
+          <button
+            onClick={onOpenArchive}
+            style={{ border: `1.5px solid ${C.line}`, background: C.paper, color: C.ink, fontSize: 11.5, fontWeight: 700, borderRadius: 8, padding: "6px 10px", cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}
+          >
+            <Archive size={13} /> アーカイブ
+          </button>
+          <button
+            onClick={onOpenCalc}
+            style={{ border: `1.5px solid ${C.line}`, background: C.paper, color: C.ink, fontSize: 11.5, fontWeight: 700, borderRadius: 8, padding: "6px 10px", cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}
+          >
+            <Calculator size={13} /> g/L計算ツール
+          </button>
+        </div>
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
         {sorted.map((w) => {
@@ -933,7 +943,51 @@ function WasteTab({ wasteCategories, onOpenWaste, onOpenCalc }) {
     </div>
   );
 }
+     
+/* ------------------------------------------------------------------ */
+/*  廃液タンク・アーカイブ一覧ページ（処分済みのタンクのみ表示）             */
+/* ------------------------------------------------------------------ */
 
+function WasteArchivePage({ wasteCategories, onBack, onOpenWaste }) {
+  const disposed = useMemo(
+    () => wasteCategories.filter((w) => w.disposed).sort((a, b) => (b.disposedAt || "").localeCompare(a.disposedAt || "")),
+    [wasteCategories]
+  );
+  return (
+    <div>
+      <TopBar title="廃液タンク・アーカイブ" onBack={onBack} />
+      <div style={{ padding: 16 }}>
+        <SectionLabel>処分済みのタンク（{disposed.length}）</SectionLabel>
+        {disposed.length === 0 && (
+          <div style={{ textAlign: "center", padding: "30px 12px", color: C.inkSoft, fontSize: 13 }}>
+            処分済みのタンクはまだありません。
+          </div>
+        )}
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {disposed.map((w) => (
+            <button
+              key={w.id}
+              onClick={() => onOpenWaste(w)}
+              style={{ textAlign: "left", background: C.paper, border: `1px solid ${C.line}`, borderRadius: 12, padding: 0, overflow: "hidden", cursor: "pointer", display: "flex" }}
+            >
+              <div style={{ width: 6, background: w.color, flexShrink: 0 }} />
+              <div style={{ flex: 1, padding: "13px 14px", display: "flex", alignItems: "center", gap: 10 }}>
+                <div style={{ flex: 1 }}>
+                  <WasteCodeTag waste={w} />
+                  <div style={{ fontSize: 12, color: C.inkSoft, marginTop: 6, display: "flex", alignItems: "center", gap: 4 }}>
+                    <Lock size={11} /> 処分済み（{w.disposedAt || "日付不明"}）
+                  </div>
+                </div>
+                <Chevron />
+              </div>
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+     
 /* ------------------------------------------------------------------ */
 /*  薬品詳細ページ                                                      */
 /* ------------------------------------------------------------------ */
@@ -1075,9 +1129,10 @@ function LocationPage({ location, chemicals, onBack, onSelectChemical }) {
 /*  廃液管理ページ（タンク：薬品ごとにグループ表示、合計量mLのみタンク単位） */
 /* ------------------------------------------------------------------ */
 
-function WastePage({ waste, onBack, onOpenSubstance, onAddOther }) {
+function WastePage({ waste, onBack, onOpenSubstance, onAddOther, onDispose }) {
   const groups = useMemo(() => groupBySubstance(waste.entries), [waste.entries]);
   const tankVolume = useMemo(() => summarizeEntries(waste.entries).totalVolumeMl, [waste.entries]);
+  const disposed = !!waste.disposed;
 
   return (
     <div>
@@ -1090,6 +1145,11 @@ function WastePage({ waste, onBack, onOpenSubstance, onAddOther }) {
           <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 26 }}>{waste.code}</div>
           <div style={{ fontSize: 14, marginTop: 4, opacity: 0.95 }}>{waste.name}</div>
           {waste.note && <div style={{ fontSize: 12, marginTop: 8, opacity: 0.85, lineHeight: 1.6 }}>{waste.note}</div>}
+          {disposed && (
+            <div style={{ display: "inline-flex", alignItems: "center", gap: 5, marginTop: 10, background: "rgba(255,255,255,0.22)", borderRadius: 8, padding: "4px 9px", fontSize: 11.5, fontWeight: 700 }}>
+              <Lock size={12} /> 処分済み（{waste.disposedAt}）・編集不可
+            </div>
+          )}
         </div>
 
         <div style={{ display: "flex", alignItems: "center", gap: 8, background: C.paper, border: `1px solid ${C.line}`, borderRadius: 12, padding: "12px 14px", marginBottom: 12 }}>
@@ -1125,7 +1185,7 @@ function WastePage({ waste, onBack, onOpenSubstance, onAddOther }) {
               <div style={{ flex: 1 }}>
                 <div style={{ fontWeight: 600, fontSize: 14.5, color: C.ink }}>{renderFormula(g.substanceName)}</div>
                 <div style={{ fontSize: 12, color: C.inkSoft, marginTop: 3 }}>
-                  {g.entries.length}件・トータル {g.summary.aggregateGL} g/L・{g.summary.totalVolumeMl} mL
+                  {g.entries.length}件・タンク内濃度 {g.summary.aggregateGL} g/L・{g.summary.totalVolumeMl} mL
                 </div>
               </div>
               <Chevron />
@@ -1133,15 +1193,25 @@ function WastePage({ waste, onBack, onOpenSubstance, onAddOther }) {
           ))}
         </div>
 
-        <button
-          onClick={onAddOther}
-          style={{ width: "100%", border: `1.5px dashed ${C.line}`, background: "transparent", color: C.inkSoft, fontSize: 13, fontWeight: 600, borderRadius: 12, padding: "12px", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}
-        >
-          <Plus size={15} /> 一覧にない薬品の廃液を記録する
-        </button>
+        {!disposed && (
+          <button
+            onClick={onAddOther}
+            style={{ width: "100%", border: `1.5px dashed ${C.line}`, background: "transparent", color: C.inkSoft, fontSize: 13, fontWeight: 600, borderRadius: 12, padding: "12px", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}
+          >
+            <Plus size={15} /> 一覧にない薬品の廃液を記録する
+          </button>
+        )}
+
+        {!disposed && (
+          <button
+            onClick={() => onDispose(waste)}
+            style={{ width: "100%", marginTop: 10, border: `1.5px solid ${C.danger}`, background: "transparent", color: C.danger, fontSize: 13, fontWeight: 700, borderRadius: 12, padding: "12px", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}
+          >
+            <Archive size={15} /> このタンクを処分済みにする
+          </button>
+        )}
       </div>
 
-      {/* タンク全体の合計使用量（mL）のみを表示。濃度は薬品ごとのページで確認 */}
       <div style={{ position: "sticky", bottom: 0, background: C.paper, borderTop: `1px solid ${C.line}`, padding: "14px 16px" }}>
         <LockedField label="このタンクの合計使用量" value={tankVolume} unit="mL" />
       </div>
@@ -1185,12 +1255,14 @@ function WasteSubstancePage({ waste, substanceName, onBack, onOpenEntry, onAddEn
 
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
           <SectionLabel>投入記録（{entries.length}件）</SectionLabel>
-          <button
-            onClick={onAddEntry}
-            style={{ border: "none", background: C.ink, color: "#fff", fontSize: 12, fontWeight: 700, borderRadius: 8, padding: "7px 11px", cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}
-          >
-            <Plus size={13} /> 記録を追加
-          </button>
+          {!waste.disposed && (
+            <button
+              onClick={onAddEntry}
+              style={{ border: "none", background: C.ink, color: "#fff", fontSize: 12, fontWeight: 700, borderRadius: 8, padding: "7px 11px", cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}
+            >
+              <Plus size={13} /> 記録を追加
+            </button>
+          )}
         </div>
 
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -1260,12 +1332,18 @@ function WasteEntryPage({ entry, waste, onBack, onDelete }) {
           {entry.volumeMl} mL
         </div>
 
-        <button
-          onClick={() => onDelete(waste.id, entry)}
-          style={{ width: "100%", border: `1.5px solid ${C.danger}`, background: C.dangerBg, color: C.danger, fontSize: 14, fontWeight: 700, borderRadius: 12, padding: "12px", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}
-        >
-          <Trash2 size={16} /> この記録を削除
-        </button>
+        {waste.disposed ? (
+          <div style={{ display: "flex", alignItems: "center", gap: 8, background: C.lockBg, borderRadius: 12, padding: "12px 14px", color: C.inkSoft, fontSize: 13 }}>
+            <Lock size={15} /> このタンクは処分済みのため編集できません
+          </div>
+        ) : (
+          <button
+            onClick={() => onDelete(waste.id, entry)}
+            style={{ width: "100%", border: `1.5px solid ${C.danger}`, background: C.dangerBg, color: C.danger, fontSize: 14, fontWeight: 700, borderRadius: 12, padding: "12px", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}
+          >
+            <Trash2 size={16} /> この記録を削除
+          </button>
+        )}
       </div>
     </div>
   );
@@ -1819,7 +1897,18 @@ function ChemStockApp() {
     await db.collection("wasteEntries").doc(entry.id).delete();
     pop();
   };
-
+     
+const handleDisposeWaste = async (waste) => {
+  if (typeof window !== "undefined" && window.confirm) {
+    if (!window.confirm(`「${waste.code} ${waste.name}」のタンクを処分済みにしますか？\nこの操作の後は編集ができなくなります。`)) return;
+  }
+  await db.collection("wasteCategories").doc(waste.id).update({
+    disposed: true,
+    disposedAt: new Date().toISOString().slice(0, 10),
+  });
+  goHome("waste");
+};
+     
   const findChem = (id) => chemicals.find((c) => c.id === id);
   const findWaste = (id) => wasteCategories.find((w) => w.id === id);
 
@@ -1899,10 +1988,11 @@ function ChemStockApp() {
               {homeTab === "waste" && (
                 <WasteTab
                   wasteCategories={wasteCategories}
-                  onOpenWaste={(w) => push({ view: "waste", wasteId: w.id })}
-                  onOpenCalc={() => push({ view: "calc" })}
-                />
-              )}
+                   onOpenWaste={(w) => push({ view: "waste", wasteId: w.id })}
+                   onOpenCalc={() => push({ view: "calc" })}
+                   onOpenArchive={() => push({ view: "wasteArchive" })}
+                 />
+               )}
             </div>
           </>
         )}
@@ -1930,9 +2020,18 @@ function ChemStockApp() {
             onBack={pop}
             onOpenSubstance={(substanceName) => push({ view: "wasteSubstance", wasteId: current.wasteId, substanceName })}
             onAddOther={() => push({ view: "wasteEntryAdd", wasteId: current.wasteId })}
+            onDispose={handleDisposeWaste}
           />
         )}
-
+           
+         {current.view === "wasteArchive" && (
+           <WasteArchivePage
+             wasteCategories={wasteCategories}
+             onBack={pop}
+             onOpenWaste={(w) => push({ view: "waste", wasteId: w.id })}
+           />
+         )}
+           
         {current.view === "wasteSubstance" && (
           <WasteSubstancePage
             waste={findWaste(current.wasteId)}
