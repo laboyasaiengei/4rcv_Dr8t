@@ -87,6 +87,7 @@ function Calculator(props) { return (<IconBase {...props}><rect x="4" y="2" widt
 function Info(props) { return (<IconBase {...props}><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></IconBase>); }
 function Archive(props) { return (<IconBase {...props}><rect x="2" y="3" width="20" height="5" rx="1"/><path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8"/><path d="M10 12h4"/></IconBase>); }
 function Backspace(props) { return (<IconBase {...props}><path d="M21 4H8l-7 8 7 8h13a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2z"/><line x1="18" y1="9" x2="12" y2="15"/><line x1="12" y1="9" x2="18" y2="15"/></IconBase>); }
+function LogOut(props) { return (<IconBase {...props}><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></IconBase>); }
 
 /* ------------------------------------------------------------------ */
 /*  デザイントークン                                                    */
@@ -353,6 +354,18 @@ const firebaseConfig = {
   appId: "1:53578950676:web:9bfa421c445853afafdf01",
 };
 
+/* ------------------------------------------------------------------ */
+/*  パスコードログイン設定                                              */
+/*  ・Firebase Console > Authentication > Sign-in method で             */
+/*    「メール/パスワード」を有効化し、下記の固定メールアドレスで          */
+/*    1アカウントだけ作成しておく（パスワード＝ラボの合言葉）              */
+/*  ・「匿名」プロバイダは必ず無効化しておくこと                           */
+/*    （有効なままだと、このログイン画面を経由せず誰でも匿名サインインで   */
+/*    　Firestoreに触れてしまうため）                                    */
+/*  ・ユーザーには「合言葉」だけを見せ、メールアドレスは意識させない        */
+/* ------------------------------------------------------------------ */
+const LAB_LOGIN_EMAIL = "labo.yasaiengei@gmail.com"; // ★実際に作成したメールアドレスに変更してください
+
 let db = null;
 let firebaseInitError = null;
 try {
@@ -363,25 +376,22 @@ try {
   console.error("Firebase init failed", err);
 }
 
-// Firestoreのルールを「ログイン済みのみ許可」にするための最低限のログイン。
-// 画面上にログインUIは出さず、開いたら自動で匿名サインインする。
-function ensureSignedIn() {
-  return new Promise((resolve, reject) => {
-    if (!window.firebase || !firebase.auth) {
-      reject(new Error("firebase.auth が読み込まれていません"));
-      return;
-    }
-    firebase.auth().onAuthStateChanged((user) => {
-      if (user) {
-        resolve(user);
-      } else {
-        firebase
-          .auth()
-          .signInAnonymously()
-          .catch(reject);
-      }
-    }, reject);
-  });
+// 現在のログイン状態を監視するだけ（自動サインインはしない）。
+// ログインしていなければ null を返し、画面側でパスコード入力を出す。
+function watchAuthState(onChange) {
+  if (!window.firebase || !firebase.auth) {
+    onChange(null, new Error("firebase.auth が読み込まれていません"));
+    return () => {};
+  }
+  return firebase.auth().onAuthStateChanged(
+    (user) => onChange(user, null),
+    (err) => onChange(null, err)
+  );
+}
+
+// パスコード（＝固定メールアドレスのパスワード）でログインする。
+function signInWithPasscode(passcode) {
+  return firebase.auth().signInWithEmailAndPassword(LAB_LOGIN_EMAIL, passcode);
 }
 
 // 初回アクセス時だけ、モックデータをFirestoreに書き込む。
@@ -767,6 +777,65 @@ function SectionLabel({ children }) {
   return (
     <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: 1.2, color: C.inkSoft, textTransform: "uppercase", marginBottom: 8 }}>
       {children}
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  合言葉ログイン画面                                                  */
+/* ------------------------------------------------------------------ */
+
+function PasscodeGate({ authError }) {
+  const [passcode, setPasscode] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (!passcode || loading) return;
+    setLoading(true);
+    setError("");
+    signInWithPasscode(passcode)
+      .catch((err) => {
+        console.error("login failed", err);
+        setError("合言葉が違います");
+      })
+      .finally(() => setLoading(false));
+  };
+
+  return (
+    <div style={{ fontFamily: "'Inter', sans-serif", background: C.bg, minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+      <style>{FONT_IMPORT}</style>
+      <form onSubmit={handleSubmit} style={{ width: "100%", maxWidth: 340, background: C.paper, border: `1px solid ${C.line}`, borderRadius: 16, padding: "28px 22px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 18 }}>
+          <div style={{ width: 30, height: 30, borderRadius: 8, background: C.ink, display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <Lock size={15} color={C.amber} />
+          </div>
+          <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 16, color: C.ink }}>ATLAS 薬品在庫・廃液管理</div>
+        </div>
+        <SectionLabel>合言葉</SectionLabel>
+        <input
+          type="password"
+          autoFocus
+          value={passcode}
+          onChange={(e) => setPasscode(e.target.value)}
+          placeholder="ラボの合言葉を入力"
+          style={{ width: "100%", border: `1.5px solid ${C.line}`, borderRadius: 10, padding: "11px 13px", fontSize: 15, color: C.ink, fontFamily: "'Inter', sans-serif", boxSizing: "border-box", marginBottom: 12 }}
+        />
+        {error && <div style={{ color: C.danger, fontSize: 12.5, marginBottom: 12 }}>{error}</div>}
+        {authError && !error && (
+          <div style={{ color: C.danger, fontSize: 12.5, marginBottom: 12 }}>
+            認証の初期化に失敗しました：{authError.message || String(authError)}
+          </div>
+        )}
+        <button
+          type="submit"
+          disabled={loading || !passcode}
+          style={{ width: "100%", border: "none", background: loading || !passcode ? "#B7C0BC" : C.ink, color: "#fff", fontSize: 15, fontWeight: 600, borderRadius: 12, padding: "13px", cursor: loading || !passcode ? "not-allowed" : "pointer" }}
+        >
+          {loading ? "確認中..." : "入室する"}
+        </button>
+      </form>
     </div>
   );
 }
@@ -2196,16 +2265,30 @@ function ChemStockApp() {
   const [stack, setStack] = useState([{ view: "home" }]);
 const [passcodeGate, setPasscodeGate] = useState(null);
 const [adminPasscode, setAdminPasscode] = useState(DEFAULT_ADMIN_PASSCODE);
-     
-  // ログイン（匿名）→ 初回だけモックデータを流し込み → Firestore購読、の順で立ち上げる。
-  // どこで失敗しても画面が真っ白にならないよう、必ずエラーを画面に出す。
+
+  // authUser: undefined = 確認中／null = 未ログイン／user = ログイン済み
+  const [authUser, setAuthUser] = useState(undefined);
+  const [authError, setAuthError] = useState(null);
+
+  // ログイン状態の監視だけを行う。自動サインインはしない＝
+  // 合言葉で「入室する」を押すまでは誰もFirestoreに触れない。
   useEffect(() => {
     if (firebaseInitError) return;
+    const unsubAuth = watchAuthState((user, err) => {
+      if (err) setAuthError(err);
+      setAuthUser(user || null);
+    });
+    return () => unsubAuth && unsubAuth();
+  }, []);
+
+  // ログイン済みになってから初めて、初回シード投入とFirestore購読を開始する。
+  // どこで失敗しても画面が真っ白にならないよう、必ずエラーを画面に出す。
+  useEffect(() => {
+    if (firebaseInitError || !authUser) return;
     let unsubChem, unsubWaste, unsubEntries, unsubSettings;
     let cancelled = false;
 
-    ensureSignedIn()
-      .then(() => seedIfNeeded())
+    seedIfNeeded()
       .then(() => {
         if (cancelled) return;
         unsubChem = db.collection("chemicals").onSnapshot(
@@ -2256,8 +2339,14 @@ const [adminPasscode, setAdminPasscode] = useState(DEFAULT_ADMIN_PASSCODE);
       if (unsubWaste) unsubWaste();
       if (unsubEntries) unsubEntries();
       if (unsubSettings) unsubSettings();
+      // ログアウト時は次回ログインに備えて画面状態をリセットする
+      setChemicals([]);
+      setWasteMeta([]);
+      setWasteEntriesRaw([]);
+      setStack([{ view: "home" }]);
+      setLoading(true);
     };
-  }, []);
+  }, [authUser]);
 
   // wasteCategories（メタ情報）＋wasteEntries（投入記録）を、既存の画面コンポーネントが
   // 期待する「entries を内包したカテゴリ配列」の形に合成する
@@ -2418,6 +2507,21 @@ const handleDeleteWasteCategories = (wastes) => {
     );
   }
 
+  // ログイン状態を確認中は何も出さない（一瞬、未ログイン画面がちらつくのを防ぐ）
+  if (authUser === undefined) {
+    return (
+      <div style={{ fontFamily: "'Inter', sans-serif", background: C.bg, minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 14 }}>
+        <style>{FONT_IMPORT}</style>
+        <Spinner />
+      </div>
+    );
+  }
+
+  // 未ログインなら、ここで止める。合言葉が正しいまで先の画面・データには一切触れさせない。
+  if (!authUser) {
+    return <PasscodeGate authError={authError} />;
+  }
+
   if (loading) {
     return (
       <div style={{ fontFamily: "'Inter', sans-serif", background: C.bg, minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 14 }}>
@@ -2442,6 +2546,15 @@ const handleDeleteWasteCategories = (wastes) => {
     </>
   }
   subtitle="Agent Tracking and Liquid-effluent Administration System"
+  right={
+    <button
+      onClick={() => firebase.auth().signOut()}
+      aria-label="ログアウト"
+      style={{ border: "none", background: "transparent", color: C.inkSoft, cursor: "pointer", display: "flex", padding: 6 }}
+    >
+      <LogOut size={17} />
+    </button>
+  }
 />
 
             <HazardStripe height={4} />
