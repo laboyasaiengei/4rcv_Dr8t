@@ -542,13 +542,13 @@ function slugify(name) {
   return "loc_" + name.trim().toLowerCase().replace(/\s+/g, "_") + "_" + Math.random().toString(36).slice(2, 6);
 }
      
-const ADMIN_PASSCODE = "1234"; // ← 実際運用するパスコードに変更してください
-function PasscodeModal({ title, message, onCancel, onSubmit }) {
+const DEFAULT_ADMIN_PASSCODE = "1234"; // Firestore(meta/settings)にまだ何も保存されていないときの初期値
+function PasscodeModal({ title, message, onCancel, onSubmit, correctPasscode }) {
   const [value, setValue] = useState("");
   const [error, setError] = useState("");
 
   const handleSubmit = () => {
-    if (value === ADMIN_PASSCODE) {
+    if (value === correctPasscode) {
       setError("");
       onSubmit();
     } else {
@@ -940,7 +940,7 @@ function InventoryTab({ chemicals, onRecord, onAdd, onDelete }) {
 /*  ホーム：廃液タブ（分類＝タンクごと／コードを主役に表示）                  */
 /* ------------------------------------------------------------------ */
 
-function WasteTab({ wasteCategories, onOpenWaste, onOpenCalc, onOpenArchive, onAddWaste }) {
+function WasteTab({ wasteCategories, onOpenWaste, onOpenCalc, onOpenArchive, onAddWaste, onChangePasscode }) {
   const sorted = useMemo(
     () => wasteCategories.filter((w) => !w.disposed).sort(compareWasteCode),
     [wasteCategories]
@@ -949,7 +949,7 @@ function WasteTab({ wasteCategories, onOpenWaste, onOpenCalc, onOpenArchive, onA
     <div style={{ padding: 16 }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8, flexWrap: "wrap", gap: 6 }}>
         <SectionLabel>廃液分類一覧（タンク別）</SectionLabel>
-        <div style={{ display: "flex", gap: 6 }}>
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
           <button
             onClick={onAddWaste}
             style={{ border: `1.5px solid ${C.line}`, background: C.paper, color: C.ink, fontSize: 11.5, fontWeight: 700, borderRadius: 8, padding: "6px 10px", cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}
@@ -967,6 +967,12 @@ function WasteTab({ wasteCategories, onOpenWaste, onOpenCalc, onOpenArchive, onA
             style={{ border: `1.5px solid ${C.line}`, background: C.paper, color: C.ink, fontSize: 11.5, fontWeight: 700, borderRadius: 8, padding: "6px 10px", cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}
           >
             <Calculator size={13} /> g/L計算ツール
+          </button>
+          <button
+            onClick={onChangePasscode}
+            style={{ border: `1.5px solid ${C.line}`, background: C.paper, color: C.ink, fontSize: 11.5, fontWeight: 700, borderRadius: 8, padding: "6px 10px", cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}
+          >
+            <Lock size={13} /> パスコード変更
           </button>
         </div>
       </div>
@@ -1077,6 +1083,83 @@ function AddWasteCategoryPage({ onBack, onSave }) {
           style={{ width: "100%", border: "none", background: canSave ? C.ink : "#B7C0BC", color: "#fff", fontSize: 15, fontWeight: 600, borderRadius: 12, padding: "13px", cursor: canSave ? "pointer" : "not-allowed", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}
         >
           <Plus size={16} /> 追加する
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  パスコード変更ページ                                                */
+/* ------------------------------------------------------------------ */
+
+function ChangePasscodePage({ onBack, onSave }) {
+  const [value, setValue] = useState("");
+  const [confirmValue, setConfirmValue] = useState("");
+  const [error, setError] = useState("");
+
+  const inputStyle = {
+    width: "100%",
+    border: `1.5px solid ${C.line}`,
+    borderRadius: 10,
+    padding: "10px 13px",
+    fontSize: 16,
+    fontFamily: "'Roboto Mono', monospace",
+    color: C.ink,
+    boxSizing: "border-box",
+  };
+
+  const canSave = value.trim().length >= 4 && value === confirmValue;
+
+  const handleSave = () => {
+    if (value.trim().length < 4) {
+      setError("4文字以上で入力してください。");
+      return;
+    }
+    if (value !== confirmValue) {
+      setError("確認用パスコードが一致しません。");
+      return;
+    }
+    setError("");
+    onSave(value.trim());
+  };
+
+  return (
+    <div>
+      <TopBar title="パスコードの変更" onBack={onBack} />
+      <div style={{ padding: 16 }}>
+        <SectionLabel>新しいパスコード</SectionLabel>
+        <input
+          type="password"
+          inputMode="numeric"
+          value={value}
+          onChange={(e) => { setValue(e.target.value); setError(""); }}
+          placeholder="新しいパスコード（4文字以上）"
+          style={{ ...inputStyle, marginBottom: 16 }}
+        />
+
+        <SectionLabel>確認のためもう一度入力</SectionLabel>
+        <input
+          type="password"
+          inputMode="numeric"
+          value={confirmValue}
+          onChange={(e) => { setConfirmValue(e.target.value); setError(""); }}
+          placeholder="もう一度入力"
+          style={{ ...inputStyle, marginBottom: 8 }}
+        />
+
+        {error && <div style={{ fontSize: 12, color: C.danger, marginBottom: 10 }}>{error}</div>}
+
+        <div style={{ fontSize: 11.5, color: C.inkSoft, marginBottom: 20 }}>
+          変更後は、処分・削除・新規タンク追加などすべての操作でこの新しいパスコードが必要になります。
+        </div>
+
+        <button
+          onClick={handleSave}
+          disabled={!canSave}
+          style={{ width: "100%", border: "none", background: canSave ? C.ink : "#B7C0BC", color: "#fff", fontSize: 15, fontWeight: 600, borderRadius: 12, padding: "13px", cursor: canSave ? "pointer" : "not-allowed", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}
+        >
+          <Save size={16} /> 変更を保存
         </button>
       </div>
     </div>
@@ -2019,12 +2102,13 @@ function ChemStockApp() {
   const [homeTab, setHomeTab] = useState("search");
   const [stack, setStack] = useState([{ view: "home" }]);
 const [passcodeGate, setPasscodeGate] = useState(null);
+const [adminPasscode, setAdminPasscode] = useState(DEFAULT_ADMIN_PASSCODE);
      
   // ログイン（匿名）→ 初回だけモックデータを流し込み → Firestore購読、の順で立ち上げる。
   // どこで失敗しても画面が真っ白にならないよう、必ずエラーを画面に出す。
   useEffect(() => {
     if (firebaseInitError) return;
-    let unsubChem, unsubWaste, unsubEntries;
+    let unsubChem, unsubWaste, unsubEntries, unsubSettings;
     let cancelled = false;
 
     ensureSignedIn()
@@ -2056,6 +2140,14 @@ const [passcodeGate, setPasscodeGate] = useState(null);
             setFatalError("廃液記録データの取得に失敗しました：" + err.message);
           }
         );
+        unsubSettings = db.collection("meta").doc("settings").onSnapshot(
+          (snap) => {
+            if (snap.exists && snap.data().passcode) {
+              setAdminPasscode(snap.data().passcode);
+            }
+          },
+          (err) => console.error("settings subscription error", err)
+        );
       })
       .catch((err) => {
         console.error("startup failed", err);
@@ -2070,6 +2162,7 @@ const [passcodeGate, setPasscodeGate] = useState(null);
       if (unsubChem) unsubChem();
       if (unsubWaste) unsubWaste();
       if (unsubEntries) unsubEntries();
+      if (unsubSettings) unsubSettings();
     };
   }, []);
 
@@ -2168,6 +2261,23 @@ const handleAddWasteCategory = ({ code, name, note, color }) => {
       goHome("waste");
     },
   });
+};
+
+const handleOpenChangePasscode = () => {
+  setPasscodeGate({
+    title: "本人確認",
+    message: "パスコードを変更するには、現在のパスコードを入力してください。",
+    onCancel: () => setPasscodeGate(null),
+    onConfirm: () => {
+      setPasscodeGate(null);
+      push({ view: "changePasscode" });
+    },
+  });
+};
+
+const handleSavePasscode = async (newPasscode) => {
+  await db.collection("meta").doc("settings").set({ passcode: newPasscode }, { merge: true });
+  goHome("waste");
 };
 
 const handleDeleteWasteCategories = (wastes) => {
@@ -2278,6 +2388,7 @@ const handleDeleteWasteCategories = (wastes) => {
                    onOpenCalc={() => push({ view: "calc" })}
                    onOpenArchive={() => push({ view: "wasteArchive" })}
                    onAddWaste={() => push({ view: "addWaste" })}
+                   onChangePasscode={handleOpenChangePasscode}
                  />
                )}
             </div>
@@ -2360,6 +2471,10 @@ const handleDeleteWasteCategories = (wastes) => {
         {current.view === "addWaste" && (
           <AddWasteCategoryPage onBack={pop} onSave={handleAddWasteCategory} />
         )}
+
+        {current.view === "changePasscode" && (
+          <ChangePasscodePage onBack={pop} onSave={handleSavePasscode} />
+        )}
       </div>
       {passcodeGate && (
         <PasscodeModal
@@ -2367,6 +2482,7 @@ const handleDeleteWasteCategories = (wastes) => {
           message={passcodeGate.message}
           onCancel={passcodeGate.onCancel}
           onSubmit={passcodeGate.onConfirm}
+          correctPasscode={adminPasscode}
         />
       )}
     </div>
