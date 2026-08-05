@@ -82,6 +82,7 @@ function User(props) { return (<IconBase {...props}><path d="M20 21v-2a4 4 0 0 0
 function FlaskConical(props) { return (<IconBase {...props}><path d="M10 2v6.29a2 2 0 0 1-.4 1.2L4.34 17.9A2 2 0 0 0 6 21h12a2 2 0 0 0 1.66-3.1L14.4 9.5a2 2 0 0 1-.4-1.2V2"/><path d="M8.5 2h7"/><path d="M7 16h10"/></IconBase>); }
 
 function Plus(props) { return (<IconBase {...props}><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></IconBase>); }
+function Pencil(props) { return (<IconBase {...props}><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></IconBase>); }
 function Check(props) { return (<IconBase {...props}><polyline points="20 6 9 17 4 12"/></IconBase>); }
 function Calculator(props) { return (<IconBase {...props}><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="8" y1="6" x2="16" y2="6"/><line x1="8" y1="10" x2="8" y2="10"/><line x1="12" y1="10" x2="12" y2="10"/><line x1="16" y1="10" x2="16" y2="10"/><line x1="8" y1="14" x2="8" y2="14"/><line x1="12" y1="14" x2="12" y2="14"/><line x1="16" y1="14" x2="16" y2="14"/><line x1="8" y1="18" x2="8" y2="18"/><line x1="12" y1="18" x2="12" y2="18"/><line x1="16" y1="18" x2="16" y2="18"/></IconBase>); }
 function Info(props) { return (<IconBase {...props}><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></IconBase>); }
@@ -442,12 +443,12 @@ function renderFormula(text) {
 
       if (isSubscript) {
         nodes.push(
-          <span key={i} style={{ fontSize: "0.72em", verticalAlign: "-0.28em", fontWeight: 700 }}>
+          <span key={i} style={{ fontSize: "0.76em", verticalAlign: "-0.32em", fontWeight: 700 }}>
             {run}
           </span>
         );
       } else {
-        nodes.push(<span key={i}>{run}</span>);
+        nodes.push(<span key={i} style={{ fontWeight: 600 }}>{run}</span>);
       }
       i = j;
     } else if (ch === "+" || ch === "-" || ch === "−") {
@@ -457,14 +458,22 @@ function renderFormula(text) {
       nodes.push(
         <span
           key={i}
-          style={isCharge ? { fontSize: "0.72em", verticalAlign: "0.5em", fontWeight: 700 } : undefined}
+          style={isCharge ? { fontSize: "0.76em", verticalAlign: "0.55em", fontWeight: 700 } : { fontWeight: 600 }}
         >
           {ch}
         </span>
       );
       i++;
+    } else if (ch === "・" || ch === "·" || ch === ".") {
+      // 水和物の中点は埋もれやすいので、少し余白を足して見やすくする
+      nodes.push(
+        <span key={i} style={{ margin: "0 1.5px", fontWeight: 700 }}>
+          {ch}
+        </span>
+      );
+      i++;
     } else {
-      nodes.push(<span key={i}>{ch}</span>);
+      nodes.push(<span key={i} style={{ fontWeight: 600 }}>{ch}</span>);
       i++;
     }
   }
@@ -727,12 +736,33 @@ function TopBar({ title, subtitle, onBack, right }) {
           <ArrowLeft size={20} />
         </button>
       )}
-      <div style={{ flex: 1 }}>
-        <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 17, color: C.ink, letterSpacing: 0.2 }}>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div
+          style={{
+            fontFamily: "'Space Grotesk', sans-serif",
+            fontWeight: 700,
+            fontSize: 17,
+            color: C.ink,
+            letterSpacing: 0.2,
+            whiteSpace: "nowrap",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+          }}
+        >
           {title}
         </div>
         {subtitle && (
-          <div style={{ fontSize: 11, color: C.inkSoft, marginTop: 1, letterSpacing: 0.3 }}>
+          <div
+            style={{
+              fontSize: 11,
+              color: C.inkSoft,
+              marginTop: 1,
+              letterSpacing: 0.3,
+              whiteSpace: "nowrap",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+            }}
+          >
             {subtitle}
           </div>
         )}
@@ -747,16 +777,19 @@ function FormulaTag({ formula, size = 14 }) {
     <span
       style={{
         display: "inline-flex",
-        alignItems: "center",
+        alignItems: "baseline",   // 中央揃え→ベースライン揃えに変更（下付き/上付きが自然な位置になる）
+        flexWrap: "wrap",
         fontFamily: "'Roboto Mono', monospace",
         fontSize: size,
         fontWeight: 600,
+        letterSpacing: 0.2,
         color: C.tealDeep,
         background: "#E4EAF2",
         border: `1px solid #C6D3E3`,
         borderRadius: 5,
         padding: "2px 7px",
-        lineHeight: 1.4,
+        lineHeight: 1.6,
+        wordBreak: "keep-all",   // 長い化学式が数字の途中などで不自然に折り返されるのを防ぐ
       }}
     >
       {renderFormula(formula)}
@@ -1004,14 +1037,12 @@ function InventoryTab({ chemicals, onRecord, onAdd, onDelete }) {
                 >
                   <Package size={13} /> 記録する
                 </button>
-                {status === "empty" && (
-                  <button
-                    onClick={() => onDelete(c)}
-                    style={{ border: `1.5px solid ${C.danger}`, background: C.dangerBg, color: C.danger, fontSize: 12.5, fontWeight: 700, borderRadius: 8, padding: "8px 12px", cursor: "pointer", display: "flex", alignItems: "center", gap: 5 }}
-                  >
-                    <Trash2 size={13} /> 削除
-                  </button>
-                )}
+                                <button
+                  onClick={() => onDelete(c)}
+                  ...
+                >
+                  <Trash2 size={13} /> 削除
+                </button>
               </div>
             </div>
           );
@@ -1436,14 +1467,12 @@ function ChemicalDetail({ chemical, waste, onBack, onOpenLocation, onOpenWaste, 
             >
               <Package size={16} /> 使用量を記録する
             </button>
-            {status === "empty" && (
-              <button
-                onClick={() => onDelete(chemical)}
-                style={{ border: `1.5px solid ${C.danger}`, background: C.dangerBg, color: C.danger, fontSize: 13, fontWeight: 700, borderRadius: 10, padding: "12px 14px", cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}
-              >
-                <Trash2 size={15} /> 削除
-              </button>
-            )}
+            <button
+              onClick={() => onDelete(chemical)}
+              style={{ border: `1.5px solid ${C.danger}`, background: C.dangerBg, color: C.danger, fontSize: 13, fontWeight: 700, borderRadius: 10, padding: "12px 14px", cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}
+            >
+              <Trash2 size={15} /> 削除
+            </button>
           </div>
         </div>
 
@@ -1501,18 +1530,31 @@ function ChemicalDetail({ chemical, waste, onBack, onOpenLocation, onOpenWaste, 
 /*  場所案内ページ                                                      */
 /* ------------------------------------------------------------------ */
 
-function LocationPage({ location, chemicals, onBack, onSelectChemical }) {
+function LocationPage({ location, chemicals, onBack, onSelectChemical, onEdit }) {
   const items = chemicals.filter((c) => c.location.id === location.id);
+  const loc = items[0]?.location || location; // 編集後すぐ最新表示にするため
+
   return (
     <div>
-      <TopBar title="場所案内" onBack={onBack} />
+      <TopBar
+        title="場所案内"
+        onBack={onBack}
+        right={
+          <button
+            onClick={() => onEdit(loc)}
+            style={{ border: `1.5px solid ${C.line}`, background: C.paper, color: C.ink, fontSize: 12, fontWeight: 700, borderRadius: 8, padding: "7px 11px", cursor: "pointer", display: "flex", alignItems: "center", gap: 5 }}
+          >
+            <Pencil size={13} /> 編集
+          </button>
+        }
+      />
       <div style={{ padding: 16 }}>
         <div style={{ background: C.tealDeep, borderRadius: 16, padding: "22px 18px", color: "#fff", marginBottom: 20 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, opacity: 0.85, fontSize: 12, marginBottom: 6 }}>
             <MapPin size={14} /> 保管場所
           </div>
-          <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 22 }}>{location.name}</div>
-          <div style={{ fontSize: 13, marginTop: 8, opacity: 0.9 }}>{location.note}</div>
+          <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 22 }}>{loc.name}</div>
+          <div style={{ fontSize: 13, marginTop: 8, opacity: 0.9 }}>{loc.note}</div>
         </div>
 
         <SectionLabel>この場所に保管されている薬品（{items.length}）</SectionLabel>
@@ -1533,6 +1575,50 @@ function LocationPage({ location, chemicals, onBack, onSelectChemical }) {
             </button>
           ))}
         </div>
+      </div>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  保管場所編集ページ                                                    */
+/* ------------------------------------------------------------------ */
+
+function LocationEditPage({ location, onBack, onSave }) {
+  const [name, setName] = useState(location.name || "");
+  const [note, setNote] = useState(location.note || "");
+  const canSave = name.trim().length > 0;
+
+  const inputStyle = {
+    width: "100%", border: `1.5px solid ${C.line}`, borderRadius: 10, padding: "10px 13px",
+    fontSize: 14.5, color: C.ink, fontFamily: "'Inter', sans-serif", boxSizing: "border-box",
+  };
+
+  const handleSave = () => {
+    if (!canSave) return;
+    onSave(location, { name: name.trim(), note: note.trim() });
+  };
+
+  return (
+    <div>
+      <TopBar title="保管場所を編集" onBack={onBack} />
+      <div style={{ padding: 16 }}>
+        <SectionLabel>保管場所名</SectionLabel>
+        <input style={{ ...inputStyle, marginBottom: 16 }} value={name} onChange={(e) => setName(e.target.value)} placeholder="例：薬品庫A 棚1" />
+
+        <SectionLabel>場所の補足（任意）</SectionLabel>
+        <input style={{ ...inputStyle, marginBottom: 8 }} value={note} onChange={(e) => setNote(e.target.value)} placeholder="場所の補足" />
+        <div style={{ fontSize: 11.5, color: C.inkSoft, marginBottom: 20 }}>
+          この場所に保管されているすべての薬品に反映されます
+        </div>
+
+        <button
+          onClick={handleSave}
+          disabled={!canSave}
+          style={{ width: "100%", border: "none", background: canSave ? C.ink : "#B7C0BC", color: "#fff", fontSize: 15, fontWeight: 600, borderRadius: 12, padding: "13px", cursor: canSave ? "pointer" : "not-allowed", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}
+        >
+          <Save size={16} /> 保存する
+        </button>
       </div>
     </div>
   );
@@ -2295,6 +2381,19 @@ const [adminPasscode, setAdminPasscode] = useState(DEFAULT_ADMIN_PASSCODE);
       .set({ name, formula, location, stock: { amount: capacity, capacity, unit: "g" }, purpose: purpose || "", wasteId });
     goHome("inventory");
   };
+  const handleEditLocation = async (location, { name, note }) => {
+    const batch = db.batch();
+    chemicals
+      .filter((c) => c.location.id === location.id)
+      .forEach((c) => {
+        batch.update(db.collection("chemicals").doc(c.id), {
+          "location.name": name,
+          "location.note": note,
+        });
+      });
+    await batch.commit();
+    pop();
+  };
 
   const handleDeleteChemical = async (chem) => {
     if (typeof window !== "undefined" && window.confirm) {
@@ -2504,8 +2603,18 @@ const handleDeleteWasteCategories = (wastes) => {
           />
         )}
 
-        {current.view === "location" && (
-          <LocationPage location={current.loc} chemicals={chemicals} onBack={pop} onSelectChemical={(c) => push({ view: "detail", id: c.id })} />
+                {current.view === "location" && (
+          <LocationPage
+            location={current.loc}
+            chemicals={chemicals}
+            onBack={pop}
+            onSelectChemical={(c) => push({ view: "detail", id: c.id })}
+            onEdit={(loc) => push({ view: "editLocation", loc })}
+          />
+        )}
+
+        {current.view === "editLocation" && (
+          <LocationEditPage location={current.loc} onBack={pop} onSave={handleEditLocation} />
         )}
 
         {current.view === "waste" && (
