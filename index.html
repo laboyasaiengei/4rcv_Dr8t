@@ -887,7 +887,7 @@ function FormulaTag({ formula, size = 14 }) {
 
 function SectionLabel({ children }) {
   return (
-    <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: 1.2, color: C.inkSoft, textTransform: "uppercase", marginBottom: 8 }}>
+    <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: 1.2, color: C.inkSoft, marginBottom: 8 }}>
       {children}
     </div>
   );
@@ -2324,8 +2324,8 @@ function ConcentrationCalcBody({ onApply }) {
   return (
     <div style={{ padding: 16 }}>
       <div style={{ display: "flex", alignItems: "flex-start", gap: 8, background: C.okBg, border: `1px solid #C6D3E3`, borderRadius: 10, padding: "10px 13px", marginBottom: 20 }}>
-        <Info size={15} color={C.tealDeep} style={{ marginTop: 1, flexShrink: 0 }} />
-        <span style={{ fontSize: 12.5, color: C.tealDeep, lineHeight: 1.6 }}>
+        <Info size={15} color={C.inkSoft} style={{ marginTop: 1, flexShrink: 0 }} />
+        <span style={{ fontSize: 12.5, color: C.inkSoft, lineHeight: 1.6 }}>
           分子量・物質量(mol)・体積(mL) から、廃液記録に入力する濃度(g/L)を計算します。
         </span>
       </div>
