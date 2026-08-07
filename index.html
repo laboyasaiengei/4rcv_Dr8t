@@ -763,7 +763,7 @@ function MissingItemNotice({ title, message, onBack }) {
         </div>
         <button
           onClick={onBack}
-          style={{ width: "100%", marginTop: 16, border: "none", background: C.ink, color: "#fff", fontSize: 14.5, fontWeight: 600, borderRadius: 12, padding: "13px", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}
+          style={{ width: "100%", marginTop: 16, border: "none", background: HEADER.bg, color: "#fff", fontSize: 14.5, fontWeight: 600, borderRadius: 12, padding: "13px", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}
         >
           <ArrowLeft size={16} /> 戻る
         </button>
@@ -860,6 +860,7 @@ function TopBar({ title, subtitle, onBack, right }) {
 }
 
 function FormulaTag({ formula, size = 14 }) {
+  if (!formula) return null;
   return (
     <span
       style={{
@@ -1048,7 +1049,7 @@ function SearchTab({ chemicals, onSelect }) {
 /*  ホーム：場所タブ                                                    */
 /* ------------------------------------------------------------------ */
 
-function LocationTab({ chemicals, extraLocations, onOpenLocation, onAddLocation }) {
+function LocationTab({ chemicals, extraLocations, onOpenLocation, onAddLocation, onReorder, onDelete }) {
   const locations = useMemo(() => {
     const map = new Map();
     chemicals.forEach((c) => {
@@ -1059,7 +1060,19 @@ function LocationTab({ chemicals, extraLocations, onOpenLocation, onAddLocation 
     (extraLocations || []).forEach((l) => {
       if (!map.has(l.id)) map.set(l.id, { id: l.id, name: l.name, note: l.note || "", items: [] });
     });
-    return Array.from(map.values());
+    // 場所メタ情報(extraLocations)にorderがあれば、薬品由来の場所にもマージする
+    const metaById = new Map((extraLocations || []).map((l) => [l.id, l]));
+    const list = Array.from(map.values()).map((loc) => ({
+      ...loc,
+      order: typeof metaById.get(loc.id)?.order === "number" ? metaById.get(loc.id).order : null,
+    }));
+    list.sort((a, b) => {
+      const ao = a.order === null ? Infinity : a.order;
+      const bo = b.order === null ? Infinity : b.order;
+      if (ao !== bo) return ao - bo;
+      return a.name < b.name ? -1 : a.name > b.name ? 1 : 0;
+    });
+    return list;
   }, [chemicals, extraLocations]);
 
   return (
@@ -1068,29 +1081,58 @@ function LocationTab({ chemicals, extraLocations, onOpenLocation, onAddLocation 
         <SectionLabel>保管場所一覧</SectionLabel>
         <button
           onClick={onAddLocation}
-          style={{ border: "none", background: C.ink, color: "#fff", fontSize: 12, fontWeight: 700, borderRadius: 8, padding: "7px 11px", cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}
+          style={{ border: "none", background: HEADER.bg, color: "#fff", fontSize: 12, fontWeight: 700, borderRadius: 8, padding: "7px 11px", cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}
         >
           <Plus size={13} /> 場所を追加
         </button>
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-        {locations.map((loc) => (
-          <button
+        {locations.map((loc, index) => (
+          <div
             key={loc.id}
-            onClick={() => onOpenLocation(loc)}
-            style={{ textAlign: "left", background: C.paper, border: `1px solid ${C.line}`, borderRadius: 12, padding: "13px 14px", display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}
+            style={{ background: C.paper, border: `1px solid ${C.line}`, borderRadius: 12, padding: "13px 14px", display: "flex", alignItems: "center", gap: 10 }}
           >
-            <div style={{ width: 34, height: 34, borderRadius: 9, background: C.okBg, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-              <MapPin size={16} color={C.tealDeep} />
+            <div style={{ display: "flex", flexDirection: "column", gap: 3, flexShrink: 0 }}>
+              <button
+                onClick={() => onReorder(locations, index, "up")}
+                disabled={index === 0}
+                aria-label="上に移動"
+                style={{ border: "none", background: "transparent", cursor: index === 0 ? "default" : "pointer", opacity: index === 0 ? 0.3 : 1, padding: 2, display: "flex" }}
+              >
+                <ChevronRight size={14} color={C.inkSoft} style={{ transform: "rotate(-90deg)" }} />
+              </button>
+              <button
+                onClick={() => onReorder(locations, index, "down")}
+                disabled={index === locations.length - 1}
+                aria-label="下に移動"
+                style={{ border: "none", background: "transparent", cursor: index === locations.length - 1 ? "default" : "pointer", opacity: index === locations.length - 1 ? 0.3 : 1, padding: 2, display: "flex" }}
+              >
+                <ChevronRight size={14} color={C.inkSoft} style={{ transform: "rotate(90deg)" }} />
+              </button>
             </div>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontWeight: 600, fontSize: 14.5, color: C.ink }}>{loc.name}</div>
-              <div style={{ fontSize: 12, color: C.inkSoft, marginTop: 2 }}>
-                {loc.items.length}品目{loc.note ? `・${loc.note}` : ""}
+            <button
+              onClick={() => onOpenLocation(loc)}
+              style={{ textAlign: "left", border: "none", background: "transparent", padding: 0, display: "flex", alignItems: "center", gap: 10, flex: 1, cursor: "pointer" }}
+            >
+              <div style={{ width: 34, height: 34, borderRadius: 9, background: C.okBg, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                <MapPin size={16} color={C.tealDeep} />
               </div>
-            </div>
-            <Chevron />
-          </button>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontWeight: 600, fontSize: 14.5, color: C.ink }}>{loc.name}</div>
+                <div style={{ fontSize: 12, color: C.inkSoft, marginTop: 2 }}>
+                  {loc.items.length}品目{loc.note ? `・${loc.note}` : ""}
+                </div>
+              </div>
+              <Chevron />
+            </button>
+            <button
+              onClick={() => onDelete(loc)}
+              aria-label="削除"
+              style={{ border: `1.5px solid ${C.danger}`, background: C.dangerBg, color: C.danger, borderRadius: 8, padding: "7px", cursor: "pointer", display: "flex", flexShrink: 0 }}
+            >
+              <Trash2 size={13} />
+            </button>
+          </div>
         ))}
         {locations.length === 0 && (
           <div style={{ textAlign: "center", color: C.inkSoft, fontSize: 13, padding: "40px 0" }}>
@@ -1113,7 +1155,7 @@ function InventoryTab({ chemicals, onRecord, onAdd, onDelete }) {
         <SectionLabel>在庫一覧（g表記）</SectionLabel>
         <button
           onClick={onAdd}
-          style={{ border: "none", background: C.ink, color: "#fff", fontSize: 12, fontWeight: 700, borderRadius: 8, padding: "7px 11px", cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}
+          style={{ border: "none", background: HEADER.bg, color: "#fff", fontSize: 12, fontWeight: 700, borderRadius: 8, padding: "7px 11px", cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}
         >
           <Plus size={13} /> 薬品を追加
         </button>
@@ -1121,25 +1163,21 @@ function InventoryTab({ chemicals, onRecord, onAdd, onDelete }) {
       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
         {chemicals.map((c) => {
           const status = autoStatus(c.stock);
-          const ratio = Math.max(0.02, Math.min(1, stockRatio(c.stock)));
           return (
             <div key={c.id} style={{ background: C.paper, border: `1px solid ${C.line}`, borderRadius: 12, padding: "12px 14px" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontWeight: 600, fontSize: 14.5, color: C.ink }}>{c.name}</div>
-                  <div style={{ fontSize: 12, color: C.inkSoft, marginTop: 3, fontFamily: "'Roboto Mono', monospace" }}>
-                    {c.stock.amount} / {c.stock.capacity} g
+                  <div style={{ fontSize: 13, color: C.ink, marginTop: 3, fontFamily: "'Roboto Mono', monospace", fontWeight: 600 }}>
+                    {c.stock.amount} g
                   </div>
                 </div>
                 <AutoStatusBadge statusKey={status} size="small" />
               </div>
-              <div style={{ height: 6, borderRadius: 4, background: "#E7EAE5", marginTop: 10, overflow: "hidden" }}>
-                <div style={{ height: "100%", width: `${ratio * 100}%`, background: barColor(c.stock), borderRadius: 4 }} />
-              </div>
               <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
                 <button
                   onClick={() => onRecord(c)}
-                  style={{ flex: 1, border: "none", background: C.ink, color: "#fff", fontSize: 12.5, fontWeight: 600, borderRadius: 8, padding: "8px 12px", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 5 }}
+                  style={{ flex: 1, border: "none", background: HEADER.bg, color: "#fff", fontSize: 12.5, fontWeight: 600, borderRadius: 8, padding: "8px 12px", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 5 }}
                 >
                   <Package size={13} /> 記録する
                 </button>
@@ -1206,10 +1244,9 @@ function WasteTab({ wasteCategories, onOpenWaste, onOpenCalc, onOpenArchive, onA
             <button
               key={w.id}
               onClick={() => onOpenWaste(w)}
-              style={{ textAlign: "left", background: C.paper, border: `1px solid ${C.line}`, borderRadius: 12, padding: 0, overflow: "hidden", cursor: "pointer", display: "flex" }}
+              style={{ textAlign: "left", background: C.paper, border: `1px solid ${C.line}`, borderRadius: 12, padding: "13px 14px", overflow: "hidden", cursor: "pointer", display: "flex" }}
             >
-              <div style={{ width: 6, background: w.color, flexShrink: 0 }} />
-              <div style={{ flex: 1, padding: "13px 14px", display: "flex", alignItems: "center", gap: 10 }}>
+              <div style={{ flex: 1, display: "flex", alignItems: "center", gap: 10 }}>
                 <div style={{ flex: 1 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                     <WasteCodeTag waste={w} />
@@ -1241,9 +1278,8 @@ function AddWasteCategoryPage({ onBack, onSave }) {
   const [code, setCode] = useState("");
   const [name, setName] = useState("");
   const [note, setNote] = useState("");
-  const [color, setColor] = useState(WASTE_COLOR_PRESETS[0]);
 
-  const canSave = code.trim() && name.trim() && color;
+  const canSave = code.trim() && name.trim();
 
   const inputStyle = {
     width: "100%",
@@ -1258,7 +1294,7 @@ function AddWasteCategoryPage({ onBack, onSave }) {
 
   const handleSave = () => {
     if (!canSave) return;
-    onSave({ code: code.trim(), name: name.trim(), note: note.trim(), color });
+    onSave({ code: code.trim(), name: name.trim(), note: note.trim(), color: WASTE_COLOR_PRESETS[0] });
   };
 
   return (
@@ -1280,25 +1316,6 @@ function AddWasteCategoryPage({ onBack, onSave }) {
           style={{ ...inputStyle, marginBottom: 20, resize: "none" }}
         />
 
-        <SectionLabel>タグの色</SectionLabel>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginBottom: 8 }}>
-          {WASTE_COLOR_PRESETS.map((c) => {
-            const active = color === c;
-            return (
-              <button
-                key={c}
-                onClick={() => setColor(c)}
-                style={{
-                  width: 34, height: 34, borderRadius: "50%", background: c, cursor: "pointer",
-                  border: active ? `3px solid ${C.ink}` : `1.5px solid ${C.line}`,
-                  display: "flex", alignItems: "center", justifyContent: "center", padding: 0,
-                }}
-              >
-                {active && <Check size={15} color="#fff" />}
-              </button>
-            );
-          })}
-        </div>
         <div style={{ fontSize: 11.5, color: C.inkSoft, marginBottom: 20 }}>
           新規タンクは未使用（タンク使用開始日なし）として登録されます
         </div>
@@ -1306,7 +1323,7 @@ function AddWasteCategoryPage({ onBack, onSave }) {
         <button
           onClick={handleSave}
           disabled={!canSave}
-          style={{ width: "100%", border: "none", background: canSave ? C.ink : "#B7C0BC", color: "#fff", fontSize: 15, fontWeight: 600, borderRadius: 12, padding: "13px", cursor: canSave ? "pointer" : "not-allowed", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}
+          style={{ width: "100%", border: "none", background: canSave ? HEADER.bg : "#B7C0BC", color: "#fff", fontSize: 15, fontWeight: 600, borderRadius: 12, padding: "13px", cursor: canSave ? "pointer" : "not-allowed", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}
         >
           <Plus size={16} /> 追加する
         </button>
@@ -1390,7 +1407,7 @@ function ChangePasscodePage({ onBack, onSave }) {
         <button
           onClick={handleConfirm}
           disabled={value.length < minLen}
-          style={{ width: "100%", marginTop: 22, border: "none", background: value.length >= minLen ? C.ink : "#B7C0BC", color: "#fff", fontSize: 15, fontWeight: 600, borderRadius: 12, padding: "13px", cursor: value.length >= minLen ? "pointer" : "not-allowed", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}
+          style={{ width: "100%", marginTop: 22, border: "none", background: value.length >= minLen ? HEADER.bg : "#B7C0BC", color: "#fff", fontSize: 15, fontWeight: 600, borderRadius: 12, padding: "13px", cursor: value.length >= minLen ? "pointer" : "not-allowed", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}
         >
           {step === "enter" ? "次へ" : <><Save size={16} /> 変更を保存</>}
         </button>
@@ -1458,7 +1475,7 @@ function WasteArchivePage({ wasteCategories, onBack, onOpenWaste, onDeleteWastes
               setSelectMode((v) => !v);
               setSelected(new Set());
             }}
-            style={{ border: `1.5px solid ${C.line}`, background: selectMode ? C.ink : C.paper, color: selectMode ? "#fff" : C.ink, fontSize: 11.5, fontWeight: 700, borderRadius: 8, padding: "6px 10px", cursor: "pointer" }}
+            style={{ border: `1.5px solid ${C.line}`, background: selectMode ? HEADER.bg : C.paper, color: selectMode ? "#fff" : C.ink, fontSize: 11.5, fontWeight: 700, borderRadius: 8, padding: "6px 10px", cursor: "pointer" }}
           >
             {selectMode ? "選択をやめる" : "選択して削除"}
           </button>
@@ -1477,10 +1494,9 @@ function WasteArchivePage({ wasteCategories, onBack, onOpenWaste, onDeleteWastes
               <button
                 key={w.id}
                 onClick={() => handleRowClick(w)}
-                style={{ textAlign: "left", background: C.paper, border: `1px solid ${isSelected ? C.danger : C.line}`, borderRadius: 12, padding: 0, overflow: "hidden", cursor: "pointer", display: "flex" }}
+                style={{ textAlign: "left", background: C.paper, border: `1px solid ${isSelected ? C.danger : C.line}`, borderRadius: 12, padding: "13px 14px", overflow: "hidden", cursor: "pointer", display: "flex" }}
               >
-                <div style={{ width: 6, background: w.color, flexShrink: 0 }} />
-                <div style={{ flex: 1, padding: "13px 14px", display: "flex", alignItems: "center", gap: 10 }}>
+                <div style={{ flex: 1, display: "flex", alignItems: "center", gap: 10 }}>
                   {selectMode && (
                     <div
                       style={{
@@ -1546,16 +1562,26 @@ function WasteArchivePage({ wasteCategories, onBack, onOpenWaste, onDeleteWastes
 /*  薬品詳細ページ                                                      */
 /* ------------------------------------------------------------------ */
 
-function ChemicalDetail({ chemical, waste, onBack, onOpenLocation, onOpenWaste, onRecord, onDelete, onRecordWaste }) {
+function ChemicalDetail({ chemical, waste, onBack, onEdit, onOpenLocation, onOpenWaste, onRecord, onDelete, onRecordWaste }) {
   const status = autoStatus(chemical.stock);
-  const ratio = Math.max(0.02, Math.min(1, stockRatio(chemical.stock)));
   // waste（廃液分類）が見つからない場合でも画面がクラッシュしないよう、代替表示にフォールバックする
   const safeWaste = waste || UNKNOWN_WASTE;
   const hasWaste = !!waste;
 
   return (
     <div>
-      <TopBar title={chemical.name} onBack={onBack} />
+      <TopBar
+        title={chemical.name}
+        onBack={onBack}
+        right={
+          <button
+            onClick={() => onEdit(chemical)}
+            style={{ border: `1.5px solid ${HEADER.border}`, background: "transparent", color: HEADER.text, fontSize: 12, fontWeight: 700, borderRadius: 8, padding: "7px 11px", cursor: "pointer", display: "flex", alignItems: "center", gap: 5 }}
+          >
+            <Pencil size={13} /> 編集
+          </button>
+        }
+      />
       <HazardStripe />
       <div style={{ padding: 16 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 18 }}>
@@ -1567,16 +1593,13 @@ function ChemicalDetail({ chemical, waste, onBack, onOpenLocation, onOpenWaste, 
         <div style={{ background: C.paper, border: `1px solid ${C.line}`, borderRadius: 14, padding: 16, marginBottom: 20 }}>
           <div style={{ fontFamily: "'Roboto Mono', monospace", fontSize: 26, fontWeight: 600, color: C.ink }}>
             {chemical.stock.amount}
-            <span style={{ fontSize: 14, color: C.inkSoft, fontWeight: 500 }}> / {chemical.stock.capacity} g</span>
-          </div>
-          <div style={{ height: 8, borderRadius: 5, background: "#E7EAE5", marginTop: 12, overflow: "hidden" }}>
-            <div style={{ height: "100%", width: `${ratio * 100}%`, background: barColor(chemical.stock), borderRadius: 5 }} />
+            <span style={{ fontSize: 14, color: C.inkSoft, fontWeight: 500 }}> g</span>
           </div>
 
           <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
             <button
               onClick={() => onRecord(chemical)}
-              style={{ flex: 1, border: "none", background: C.ink, color: "#fff", fontSize: 14, fontWeight: 600, borderRadius: 10, padding: "12px", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}
+              style={{ flex: 1, border: "none", background: HEADER.bg, color: "#fff", fontSize: 14, fontWeight: 600, borderRadius: 10, padding: "12px", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}
             >
               <Package size={16} /> 使用量を記録する
             </button>
@@ -1607,7 +1630,9 @@ function ChemicalDetail({ chemical, waste, onBack, onOpenLocation, onOpenWaste, 
             <MapPin size={18} color={C.tealDeep} />
           </div>
           <div style={{ flex: 1 }}>
-            <div style={{ fontWeight: 600, fontSize: 15, color: C.ink }}>{chemical.location.name}</div>
+            <div style={{ fontWeight: 600, fontSize: 15, color: C.ink }}>
+              {chemical.location.name}{chemical.subLocation ? `（${chemical.subLocation}）` : ""}
+            </div>
             <div style={{ fontSize: 12.5, color: C.inkSoft, marginTop: 2 }}>{chemical.location.note}</div>
           </div>
           <Chevron />
@@ -1617,18 +1642,17 @@ function ChemicalDetail({ chemical, waste, onBack, onOpenLocation, onOpenWaste, 
         <button
           onClick={() => hasWaste && onOpenWaste(waste)}
           disabled={!hasWaste}
-          style={{ width: "100%", textAlign: "left", background: C.paper, border: `1px solid ${C.line}`, borderRadius: 14, padding: 0, overflow: "hidden", cursor: hasWaste ? "pointer" : "default", display: "flex", marginBottom: 10, opacity: hasWaste ? 1 : 0.85 }}
+          style={{ width: "100%", textAlign: "left", background: C.paper, border: `1px solid ${C.line}`, borderRadius: 14, padding: "14px 16px", overflow: "hidden", cursor: hasWaste ? "pointer" : "default", display: "flex", marginBottom: 10, opacity: hasWaste ? 1 : 0.85 }}
         >
-          <div style={{ width: 7, background: safeWaste.color }} />
-          <div style={{ flex: 1, padding: "14px 16px", display: "flex", alignItems: "center", gap: 12 }}>
-            <Trash2 size={18} color={safeWaste.color} />
+          <div style={{ flex: 1, display: "flex", alignItems: "center", gap: 12 }}>
+            <Trash2 size={18} color={C.tealDeep} />
             <div style={{ flex: 1 }}>
               {hasWaste ? (
                 <WasteCodeTag waste={safeWaste} size="small" />
               ) : (
                 <>
                   <div style={{ fontWeight: 600, fontSize: 13.5, color: C.ink }}>{safeWaste.name}</div>
-                  <div style={{ fontSize: 11.5, color: C.inkSoft, marginTop: 3, lineHeight: 1.5 }}>{safeWaste.note}</div>
+                  <div style={{ fontSize: 11.5, color: C.inkSoft, marginTop: 3, lineHeight: 1.5 }}>{renderFormula(safeWaste.note)}</div>
                 </>
               )}
             </div>
@@ -1639,9 +1663,100 @@ function ChemicalDetail({ chemical, waste, onBack, onOpenLocation, onOpenWaste, 
         <button
           onClick={() => hasWaste && onRecordWaste(chemical, waste)}
           disabled={!hasWaste}
-          style={{ width: "100%", border: `1.5px solid ${safeWaste.color}`, background: C.paper, color: C.ink, fontSize: 14, fontWeight: 700, borderRadius: 12, padding: "12px", cursor: hasWaste ? "pointer" : "not-allowed", opacity: hasWaste ? 1 : 0.6, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}
+          style={{ width: "100%", border: `1.5px solid ${C.tealDeep}`, background: C.paper, color: C.ink, fontSize: 14, fontWeight: 700, borderRadius: 12, padding: "12px", cursor: hasWaste ? "pointer" : "not-allowed", opacity: hasWaste ? 1 : 0.6, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}
         >
           <Plus size={16} /> この薬品の廃液を記録する
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  薬品編集ページ（分子式・区画・廃液分類はあとから編集可能）                 */
+/* ------------------------------------------------------------------ */
+
+function ChemicalEditPage({ chemical, wasteCategories, onBack, onSave }) {
+  const [formula, setFormula] = useState(chemical.formula || "");
+  const [subLocation, setSubLocation] = useState(chemical.subLocation || "");
+  const [wasteId, setWasteId] = useState(chemical.wasteId || null);
+
+  const inputStyle = {
+    width: "100%",
+    border: `1.5px solid ${C.line}`,
+    borderRadius: 10,
+    padding: "10px 13px",
+    fontSize: 14.5,
+    color: C.ink,
+    fontFamily: "'Inter', sans-serif",
+    boxSizing: "border-box",
+  };
+
+  const handleSave = () => {
+    onSave(chemical, { formula: formula.trim(), subLocation: subLocation.trim(), wasteId });
+  };
+
+  return (
+    <div>
+      <TopBar title={`${chemical.name}を編集`} onBack={onBack} />
+      <div style={{ padding: 16 }}>
+        <SectionLabel>分子式（任意）</SectionLabel>
+        <input style={{ ...inputStyle, marginBottom: 16, fontFamily: "'Roboto Mono', monospace" }} value={formula} onChange={(e) => setFormula(e.target.value)} placeholder="例：CH3OH（略称でも可）" />
+
+        <SectionLabel>区画（任意・例：1 / A）</SectionLabel>
+        <input style={{ ...inputStyle, marginBottom: 20 }} value={subLocation} onChange={(e) => setSubLocation(e.target.value)} placeholder={`${chemical.location.name}の中の区画`} />
+
+        <SectionLabel>廃液分類（あとからいつでも変更できます）</SectionLabel>
+        <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 26 }}>
+          <button
+            onClick={() => setWasteId(null)}
+            style={{
+              textAlign: "left",
+              display: "flex",
+              alignItems: "center",
+              gap: 10,
+              border: `1.5px solid ${wasteId === null ? C.tealDeep : C.line}`,
+              background: wasteId === null ? "#fff" : C.paper,
+              borderRadius: 10,
+              padding: "11px 13px",
+              cursor: "pointer",
+            }}
+          >
+            <div style={{ flex: 1, fontSize: 13.5, color: C.inkSoft, fontWeight: 600 }}>あとで設定する（未設定）</div>
+            {wasteId === null && <Check size={16} color={C.tealDeep} />}
+          </button>
+          {[...wasteCategories].sort(compareWasteCode).map((w) => {
+            const active = wasteId === w.id;
+            return (
+              <button
+                key={w.id}
+                onClick={() => setWasteId(w.id)}
+                style={{
+                  textAlign: "left",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 10,
+                  border: `1.5px solid ${active ? C.tealDeep : C.line}`,
+                  background: active ? "#fff" : C.paper,
+                  borderRadius: 10,
+                  padding: "11px 13px",
+                  cursor: "pointer",
+                }}
+              >
+                <div style={{ flex: 1 }}>
+                  <WasteCodeTag waste={w} size="small" />
+                </div>
+                {active && <Check size={16} color={C.tealDeep} />}
+              </button>
+            );
+          })}
+        </div>
+
+        <button
+          onClick={handleSave}
+          style={{ width: "100%", border: "none", background: HEADER.bg, color: "#fff", fontSize: 15, fontWeight: 600, borderRadius: 12, padding: "13px", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}
+        >
+          <Save size={16} /> 保存する
         </button>
       </div>
     </div>
@@ -1655,6 +1770,24 @@ function ChemicalDetail({ chemical, waste, onBack, onOpenLocation, onOpenWaste, 
 function LocationPage({ location, chemicals, onBack, onSelectChemical, onEdit }) {
   const items = chemicals.filter((c) => c.location.id === location.id);
   const loc = items[0]?.location || location; // 編集後すぐ最新表示にするため
+
+  // 場所の中の細かい区画（例：1, 2, A, B）ごとにグループ化する。
+  // 区画が未設定の薬品は「区画未設定」としてまとめて表示する。
+  const groups = useMemo(() => {
+    const map = new Map();
+    items.forEach((c) => {
+      const key = c.subLocation && c.subLocation.trim() ? c.subLocation.trim() : "";
+      if (!map.has(key)) map.set(key, []);
+      map.get(key).push(c);
+    });
+    const entries = Array.from(map.entries());
+    entries.sort((a, b) => {
+      if (a[0] === "") return 1;
+      if (b[0] === "") return -1;
+      return a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0;
+    });
+    return entries;
+  }, [items]);
 
   return (
     <div>
@@ -1680,23 +1813,32 @@ function LocationPage({ location, chemicals, onBack, onSelectChemical, onEdit })
         </div>
 
         <SectionLabel>この場所に保管されている薬品（{items.length}）</SectionLabel>
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {items.map((c) => (
-            <button
-              key={c.id}
-              onClick={() => onSelectChemical(c)}
-              style={{ textAlign: "left", background: C.paper, border: `1px solid ${C.line}`, borderRadius: 12, padding: "12px 14px", display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}
-            >
-              <div style={{ flex: 1 }}>
-                <div style={{ fontWeight: 600, fontSize: 14.5, color: C.ink }}>{c.name}</div>
-                <div style={{ marginTop: 5 }}>
-                  <FormulaTag formula={c.formula} size={11.5} />
-                </div>
+        {groups.map(([key, list]) => (
+          <div key={key || "__none__"} style={{ marginBottom: 16 }}>
+            {key && (
+              <div style={{ fontSize: 12, fontWeight: 700, color: C.tealDeep, marginBottom: 8, fontFamily: "'Roboto Mono', monospace" }}>
+                {loc.name}-{key}
               </div>
-              <Chevron />
-            </button>
-          ))}
-        </div>
+            )}
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              {list.map((c) => (
+                <button
+                  key={c.id}
+                  onClick={() => onSelectChemical(c)}
+                  style={{ textAlign: "left", background: C.paper, border: `1px solid ${C.line}`, borderRadius: 12, padding: "12px 14px", display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}
+                >
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontWeight: 600, fontSize: 14.5, color: C.ink }}>{c.name}</div>
+                    <div style={{ marginTop: 5 }}>
+                      <FormulaTag formula={c.formula} size={11.5} />
+                    </div>
+                  </div>
+                  <Chevron />
+                </button>
+              ))}
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   );
@@ -1737,7 +1879,7 @@ function LocationEditPage({ location, onBack, onSave }) {
         <button
           onClick={handleSave}
           disabled={!canSave}
-          style={{ width: "100%", border: "none", background: canSave ? C.ink : "#B7C0BC", color: "#fff", fontSize: 15, fontWeight: 600, borderRadius: 12, padding: "13px", cursor: canSave ? "pointer" : "not-allowed", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}
+          style={{ width: "100%", border: "none", background: canSave ? HEADER.bg : "#B7C0BC", color: "#fff", fontSize: 15, fontWeight: 600, borderRadius: 12, padding: "13px", cursor: canSave ? "pointer" : "not-allowed", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}
         >
           <Save size={16} /> 保存する
         </button>
@@ -1785,7 +1927,7 @@ function AddLocationPage({ onBack, onSave }) {
         <button
           onClick={handleSave}
           disabled={!canSave}
-          style={{ width: "100%", border: "none", background: canSave ? C.ink : "#B7C0BC", color: "#fff", fontSize: 15, fontWeight: 600, borderRadius: 12, padding: "13px", cursor: canSave ? "pointer" : "not-allowed", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}
+          style={{ width: "100%", border: "none", background: canSave ? HEADER.bg : "#B7C0BC", color: "#fff", fontSize: 15, fontWeight: 600, borderRadius: 12, padding: "13px", cursor: canSave ? "pointer" : "not-allowed", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}
         >
           <Save size={16} /> 保存する
         </button>
@@ -1807,13 +1949,13 @@ function WastePage({ waste, onBack, onOpenSubstance, onAddOther, onDispose }) {
     <div>
       <TopBar title="廃液管理" onBack={onBack} />
       <div style={{ padding: 16, paddingBottom: 100 }}>
-        <div style={{ borderRadius: 16, padding: "20px 18px", color: "#fff", marginBottom: 14, background: waste.color }}>
+        <div style={{ borderRadius: 16, padding: "20px 18px", color: "#fff", marginBottom: 14, background: C.tealDeep }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, opacity: 0.85, fontSize: 12, marginBottom: 6 }}>
             <Trash2 size={14} /> 廃液分類
           </div>
           <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 26 }}>{waste.code}</div>
           <div style={{ fontSize: 14, marginTop: 4, opacity: 0.95 }}>{waste.name}</div>
-          {waste.note && <div style={{ fontSize: 12, marginTop: 8, opacity: 0.85, lineHeight: 1.6 }}>{waste.note}</div>}
+          {waste.note && <div style={{ fontSize: 12, marginTop: 8, opacity: 0.85, lineHeight: 1.6 }}>{renderFormula(waste.note)}</div>}
           {disposed && (
             <div style={{ display: "inline-flex", alignItems: "center", gap: 5, marginTop: 10, background: "rgba(255,255,255,0.22)", borderRadius: 8, padding: "4px 9px", fontSize: 11.5, fontWeight: 700 }}>
               <Lock size={12} /> 処分済み（{waste.disposedAt}）・編集不可
@@ -1914,7 +2056,6 @@ function WasteSubstancePage({ waste, substanceName, onBack, onOpenEntry, onAddEn
       <TopBar title={renderFormula(substanceName)} onBack={onBack} />
       <div style={{ padding: 16 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 18 }}>
-          <div style={{ width: 8, height: 8, borderRadius: 4, background: waste.color }} />
           <span style={{ fontSize: 12.5, color: C.inkSoft }}>{waste.code}　{waste.name}</span>
         </div>
 
@@ -1933,7 +2074,7 @@ function WasteSubstancePage({ waste, substanceName, onBack, onOpenEntry, onAddEn
           {!waste.disposed && (
             <button
               onClick={onAddEntry}
-              style={{ border: "none", background: C.ink, color: "#fff", fontSize: 12, fontWeight: 700, borderRadius: 8, padding: "7px 11px", cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}
+              style={{ border: "none", background: HEADER.bg, color: "#fff", fontSize: 12, fontWeight: 700, borderRadius: 8, padding: "7px 11px", cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}
             >
               <Plus size={13} /> 記録を追加
             </button>
@@ -1975,7 +2116,6 @@ function WasteEntryPage({ entry, waste, onBack, onDelete }) {
       <TopBar title="投入記録の詳細" onBack={onBack} />
       <div style={{ padding: 16 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 18 }}>
-          <div style={{ width: 8, height: 8, borderRadius: 4, background: waste.color }} />
           <span style={{ fontSize: 12.5, color: C.inkSoft }}>{waste.code}　{waste.name}</span>
         </div>
 
@@ -2070,7 +2210,6 @@ function WasteEntryAddPage({ waste, lockedSubstanceName, onBack, onSave }) {
       <TopBar title="投入記録を追加" onBack={onBack} />
       <div style={{ padding: 16 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 18 }}>
-          <div style={{ width: 8, height: 8, borderRadius: 4, background: waste.color }} />
           <span style={{ fontSize: 12.5, color: C.inkSoft }}>{waste.code}　{waste.name}</span>
         </div>
 
@@ -2139,7 +2278,7 @@ function WasteEntryAddPage({ waste, lockedSubstanceName, onBack, onSave }) {
         <button
           onClick={handleSave}
           disabled={!canSave}
-          style={{ width: "100%", border: "none", background: canSave ? C.ink : "#B7C0BC", color: "#fff", fontSize: 15, fontWeight: 600, borderRadius: 12, padding: "13px", cursor: canSave ? "pointer" : "not-allowed", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}
+          style={{ width: "100%", border: "none", background: canSave ? HEADER.bg : "#B7C0BC", color: "#fff", fontSize: 15, fontWeight: 600, borderRadius: 12, padding: "13px", cursor: canSave ? "pointer" : "not-allowed", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}
         >
           <Save size={16} /> 記録する
         </button>
@@ -2240,7 +2379,7 @@ function ConcentrationCalcBody({ onApply }) {
         <button
           onClick={() => valid && onApply(resultGL)}
           disabled={!valid}
-          style={{ width: "100%", marginTop: 16, border: "none", background: valid ? C.ink : "#B7C0BC", color: "#fff", fontSize: 14.5, fontWeight: 600, borderRadius: 12, padding: "13px", cursor: valid ? "pointer" : "not-allowed", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}
+          style={{ width: "100%", marginTop: 16, border: "none", background: valid ? HEADER.bg : "#B7C0BC", color: "#fff", fontSize: 14.5, fontWeight: 600, borderRadius: 12, padding: "13px", cursor: valid ? "pointer" : "not-allowed", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}
         >
           <Check size={16} /> この値を使う
         </button>
@@ -2360,7 +2499,7 @@ function RecordMassPage({ chemical, onBack, onSave }) {
         <button
           onClick={handleSave}
           disabled={!mass}
-          style={{ width: "100%", border: "none", background: mass ? C.ink : "#B7C0BC", color: "#fff", fontSize: 15, fontWeight: 600, borderRadius: 12, padding: "13px", cursor: mass ? "pointer" : "not-allowed", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}
+          style={{ width: "100%", border: "none", background: mass ? HEADER.bg : "#B7C0BC", color: "#fff", fontSize: 15, fontWeight: 600, borderRadius: 12, padding: "13px", cursor: mass ? "pointer" : "not-allowed", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}
         >
           <Save size={16} /> 在庫を更新する
         </button>
@@ -2384,11 +2523,12 @@ function AddChemicalPage({ wasteCategories, onBack, onSave }) {
   const [formula, setFormula] = useState("");
   const [locationName, setLocationName] = useState("");
   const [locationNote, setLocationNote] = useState("");
+  const [subLocation, setSubLocation] = useState("");
   const [capacity, setCapacity] = useState("");
   const [purpose, setPurpose] = useState("");
   const [wasteId, setWasteId] = useState(null);
 
-  const canSave = name.trim() && formula.trim() && locationName.trim() && capacity && wasteId;
+  const canSave = name.trim() && locationName.trim() && capacity;
 
   const inputStyle = {
     width: "100%",
@@ -2408,6 +2548,7 @@ function AddChemicalPage({ wasteCategories, onBack, onSave }) {
       formula: formula.trim(),
       locationName: locationName.trim(),
       locationNote: locationNote.trim(),
+      subLocation: subLocation.trim(),
       capacity: parseFloat(capacity),
       purpose: purpose.trim(),
       wasteId,
@@ -2421,12 +2562,19 @@ function AddChemicalPage({ wasteCategories, onBack, onSave }) {
         <SectionLabel>薬品名</SectionLabel>
         <input style={{ ...inputStyle, marginBottom: 16 }} value={name} onChange={(e) => setName(e.target.value)} placeholder="例：メタノール" />
 
-        <SectionLabel>分子式</SectionLabel>
-        <input style={{ ...inputStyle, marginBottom: 16, fontFamily: "'Roboto Mono', monospace" }} value={formula} onChange={(e) => setFormula(e.target.value)} placeholder="例：CH3OH" />
+        <SectionLabel>分子式（任意）</SectionLabel>
+        <input style={{ ...inputStyle, marginBottom: 4, fontFamily: "'Roboto Mono', monospace" }} value={formula} onChange={(e) => setFormula(e.target.value)} placeholder="例：CH3OH（略称でも可）" />
+        <div style={{ fontSize: 11.5, color: C.inkSoft, marginBottom: 16 }}>
+          界面活性剤など略称で呼ぶものは、略称のまま入力してかまいません
+        </div>
 
         <SectionLabel>保管場所名</SectionLabel>
         <input style={{ ...inputStyle, marginBottom: 10 }} value={locationName} onChange={(e) => setLocationName(e.target.value)} placeholder="例：薬品庫A 棚1" />
-        <input style={{ ...inputStyle, marginBottom: 16 }} value={locationNote} onChange={(e) => setLocationNote(e.target.value)} placeholder="場所の補足（任意）" />
+        <input style={{ ...inputStyle, marginBottom: 10 }} value={locationNote} onChange={(e) => setLocationNote(e.target.value)} placeholder="場所の補足（任意）" />
+        <input style={{ ...inputStyle, marginBottom: 4 }} value={subLocation} onChange={(e) => setSubLocation(e.target.value)} placeholder="区画（任意・例：1 / A）" />
+        <div style={{ fontSize: 11.5, color: C.inkSoft, marginBottom: 16 }}>
+          同じ場所の中の細かい区画（1〜6、A〜Cなど）がある場合に入力してください
+        </div>
 
         <SectionLabel>容量（未開封時の量・g）</SectionLabel>
         <div style={{ display: "flex", alignItems: "center", gap: 8, background: C.paper, border: `1.5px solid ${C.line}`, borderRadius: 10, padding: "10px 13px", marginBottom: 8 }}>
@@ -2453,8 +2601,25 @@ function AddChemicalPage({ wasteCategories, onBack, onSave }) {
           style={{ ...inputStyle, marginBottom: 20, resize: "none" }}
         />
 
-        <SectionLabel>廃液分類（この薬品を使い終えた時の廃棄区分）</SectionLabel>
+        <SectionLabel>廃液分類（任意・あとから編集できます）</SectionLabel>
         <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 26 }}>
+          <button
+            onClick={() => setWasteId(null)}
+            style={{
+              textAlign: "left",
+              display: "flex",
+              alignItems: "center",
+              gap: 10,
+              border: `1.5px solid ${wasteId === null ? C.tealDeep : C.line}`,
+              background: wasteId === null ? "#fff" : C.paper,
+              borderRadius: 10,
+              padding: "11px 13px",
+              cursor: "pointer",
+            }}
+          >
+            <div style={{ flex: 1, fontSize: 13.5, color: C.inkSoft, fontWeight: 600 }}>あとで設定する（未設定）</div>
+            {wasteId === null && <Check size={16} color={C.tealDeep} />}
+          </button>
           {[...wasteCategories].sort(compareWasteCode).map((w) => {
             const active = wasteId === w.id;
             return (
@@ -2466,7 +2631,7 @@ function AddChemicalPage({ wasteCategories, onBack, onSave }) {
                   display: "flex",
                   alignItems: "center",
                   gap: 10,
-                  border: `1.5px solid ${active ? w.color : C.line}`,
+                  border: `1.5px solid ${active ? C.tealDeep : C.line}`,
                   background: active ? "#fff" : C.paper,
                   borderRadius: 10,
                   padding: "11px 13px",
@@ -2476,7 +2641,7 @@ function AddChemicalPage({ wasteCategories, onBack, onSave }) {
                 <div style={{ flex: 1 }}>
                   <WasteCodeTag waste={w} size="small" />
                 </div>
-                {active && <Check size={16} color={w.color} />}
+                {active && <Check size={16} color={C.tealDeep} />}
               </button>
             );
           })}
@@ -2485,7 +2650,7 @@ function AddChemicalPage({ wasteCategories, onBack, onSave }) {
         <button
           onClick={handleSave}
           disabled={!canSave}
-          style={{ width: "100%", border: "none", background: canSave ? C.ink : "#B7C0BC", color: "#fff", fontSize: 15, fontWeight: 600, borderRadius: 12, padding: "13px", cursor: canSave ? "pointer" : "not-allowed", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}
+          style={{ width: "100%", border: "none", background: canSave ? HEADER.bg : "#B7C0BC", color: "#fff", fontSize: 15, fontWeight: 600, borderRadius: 12, padding: "13px", cursor: canSave ? "pointer" : "not-allowed", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}
         >
           <Plus size={16} /> 追加する
         </button>
@@ -2621,7 +2786,7 @@ const toggleTheme = () => setTheme((t) => (t === "dark" ? "light" : "dark"));
     await db.collection("chemicals").doc(chemId).update({ "stock.amount": newAmount });
   };
 
-  const handleAddChemical = async ({ name, formula, locationName, locationNote, capacity, purpose, wasteId }) => {
+  const handleAddChemical = async ({ name, formula, locationName, locationNote, subLocation, capacity, purpose, wasteId }) => {
     const trimmedName = locationName.trim();
     const existingFromChem = chemicals.find((c) => c.location.name.trim() === trimmedName)?.location;
     const existingFromLoc = locationsMeta.find((l) => (l.name || "").trim() === trimmedName);
@@ -2634,9 +2799,19 @@ const toggleTheme = () => setTheme((t) => (t === "dark" ? "light" : "dark"));
     await db
       .collection("chemicals")
       .doc(newId)
-      .set({ name, formula, location, stock: { amount: capacity, capacity, unit: "g" }, purpose: purpose || "", wasteId });
+      .set({ name, formula: formula || "", location, subLocation: subLocation || "", stock: { amount: capacity, capacity, unit: "g" }, purpose: purpose || "", wasteId: wasteId || null });
     goHome("inventory");
   };
+
+  const handleEditChemical = async (chem, { formula, subLocation, wasteId }) => {
+    await db.collection("chemicals").doc(chem.id).update({
+      formula: formula || "",
+      subLocation: subLocation || "",
+      wasteId: wasteId || null,
+    });
+    pop();
+  };
+
   const handleEditLocation = async (location, { name, note }) => {
     const batch = db.batch();
     chemicals
@@ -2655,8 +2830,36 @@ const toggleTheme = () => setTheme((t) => (t === "dark" ? "light" : "dark"));
 
   const handleAddLocation = async ({ name, note }) => {
     const id = slugify(name);
-    await db.collection("locations").doc(id).set({ name, note: note || "" });
+    const maxOrder = Math.max(-1, ...locationsMeta.map((l) => (typeof l.order === "number" ? l.order : -1)));
+    await db.collection("locations").doc(id).set({ name, note: note || "", order: maxOrder + 1 });
     goHome("location");
+  };
+
+  // 場所の並び替え：表示順(order)を全件に振り直し、対象の2件だけ入れ替えて保存する
+  const handleReorderLocation = async (orderedLocations, index, direction) => {
+    const targetIndex = direction === "up" ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= orderedLocations.length) return;
+    const batch = db.batch();
+    orderedLocations.forEach((loc, i) => {
+      let newOrder = i;
+      if (i === index) newOrder = targetIndex;
+      if (i === targetIndex) newOrder = index;
+      batch.set(db.collection("locations").doc(loc.id), { name: loc.name, note: loc.note || "", order: newOrder }, { merge: true });
+    });
+    await batch.commit();
+  };
+
+  const handleDeleteLocation = async (loc) => {
+    if (loc.items && loc.items.length > 0) {
+      if (typeof window !== "undefined" && window.alert) {
+        window.alert("この場所にはまだ薬品があります。先に薬品を削除するか、別の場所に移してから削除してください。");
+      }
+      return;
+    }
+    if (typeof window !== "undefined" && window.confirm) {
+      if (!window.confirm(`「${loc.name}」を保管場所一覧から削除しますか？`)) return;
+    }
+    await db.collection("locations").doc(loc.id).delete();
   };
 
   const handleDeleteChemical = async (chem) => {
@@ -2846,6 +3049,8 @@ const handleDeleteWasteCategories = (wastes) => {
                   extraLocations={locationsMeta}
                   onOpenLocation={(loc) => push({ view: "location", loc })}
                   onAddLocation={() => push({ view: "addLocation" })}
+                  onReorder={handleReorderLocation}
+                  onDelete={handleDeleteLocation}
                 />
               )}
               {homeTab === "inventory" && (
@@ -2876,11 +3081,25 @@ const handleDeleteWasteCategories = (wastes) => {
               chemical={findChem(current.id)}
               waste={findWaste(findChem(current.id).wasteId)}
               onBack={pop}
+              onEdit={(c) => push({ view: "editChemical", id: c.id })}
               onOpenLocation={(loc) => push({ view: "location", loc })}
               onOpenWaste={(w) => push({ view: "waste", wasteId: w.id })}
               onRecord={(c) => push({ view: "record", id: c.id })}
               onDelete={handleDeleteChemical}
               onRecordWaste={(c, w) => push({ view: "wasteEntryAdd", wasteId: w.id, lockedSubstanceName: c.name })}
+            />
+          ) : (
+            <MissingItemNotice title="薬品が見つかりません" message="この薬品はすでに削除されているか、データが見つかりませんでした。" onBack={pop} />
+          )
+        )}
+
+        {current.view === "editChemical" && (
+          findChem(current.id) ? (
+            <ChemicalEditPage
+              chemical={findChem(current.id)}
+              wasteCategories={wasteCategories}
+              onBack={pop}
+              onSave={handleEditChemical}
             />
           ) : (
             <MissingItemNotice title="薬品が見つかりません" message="この薬品はすでに削除されているか、データが見つかりませんでした。" onBack={pop} />
