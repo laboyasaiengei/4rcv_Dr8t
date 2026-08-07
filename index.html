@@ -14,19 +14,19 @@
 <meta name="theme-color" content="#122A4E" />
 <meta name="mobile-web-app-capable" content="yes" />
 
-<script crossorigin="anonymous" src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
-<script crossorigin="anonymous" src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
-<script crossorigin="anonymous" src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.24.7/babel.min.js"></script>
+<script defer crossorigin="anonymous" src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script defer crossorigin="anonymous" src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script defer crossorigin="anonymous" src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.24.7/babel.min.js"></script>
 
 <!-- Firebase (compat SDK: グローバルな firebase 名前空間を使うので、モジュール未対応の
      Babel-in-browser構成でもそのまま呼び出せる) -->
-<script crossorigin="anonymous" src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
-<script crossorigin="anonymous" src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
-<script crossorigin="anonymous" src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script defer crossorigin="anonymous" src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script defer crossorigin="anonymous" src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script defer crossorigin="anonymous" src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 
 <style>
   html, body { margin: 0; padding: 0; background: #EEF1EC; -webkit-tap-highlight-color: transparent; }
-  * { box-sizing: border-box; font-feature-settings: "zero" 1; font-variant-numeric: normal; }
+  * { box-sizing: border-box; font-feature-settings: "zero" 1; font-variant-numeric: normal; transition: background-color .3s ease, color .3s ease, border-color .3s ease, box-shadow .3s ease; }
   input, textarea { font-family: inherit; }
   #boot-error { display: none; }
   @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
