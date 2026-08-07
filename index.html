@@ -32,7 +32,15 @@
   @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
   @keyframes shake { 10%, 90% { transform: translateX(-2px); } 20%, 80% { transform: translateX(4px); } 30%, 50%, 70% { transform: translateX(-8px); } 40%, 60% { transform: translateX(8px); } }
   @keyframes keyPress { 0% { transform: scale(1); } 50% { transform: scale(0.9); } 100% { transform: scale(1); } }
+html[data-theme="dark"], html[data-theme="dark"] body { background: #12181A; }
 </style>
+<script>
+(function(){
+  var saved = localStorage.getItem('themisTheme');
+  var theme = saved || (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+  document.documentElement.dataset.theme = theme;
+})();
+</script>
 </head>
 <body>
 <!-- Reactが立ち上がる前に致命的なエラーが起きても、画面が真っ白にならないようにするための安全網。
@@ -98,7 +106,15 @@ const FONT_IMPORT = `
 @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Roboto+Mono:wght@500;600;700&family=Inter:wght@400;500;600&display=swap');
 `;
 
-const C = {
+// ヘッダー(TopBar)は明暗テーマに関係なく、アプリのブランドカラー(紺)で固定
+const HEADER = {
+  bg: "#122A4E",
+  text: "#fff",
+  textSoft: "rgba(255,255,255,.72)",
+  border: "rgba(255,255,255,.14)",
+};
+
+const LIGHT_TOKENS = {
   bg: "#EEF1EC",
   paper: "#FBFBF9",
   ink: "#182524",
@@ -106,13 +122,33 @@ const C = {
   line: "#D8DED8",
   amber: "#E2A233",
   amberDeep: "#B97A1B",
-  teal: "#3C6EA5",       // ← アイコンに近い青
-  tealDeep: "#122A4E",   // ← アイコンの紺色そのもの
+  teal: "#3C6EA5",
+  tealDeep: "#122A4E",
   danger: "#B23B31",
   dangerBg: "#F6E4E1",
-  okBg: "#E6ECF3",       // ← teal系と組み合わせる薄色背景も青寄りに
+  okBg: "#E6ECF3",
   lockBg: "#EDEFEA",
 };
+
+const DARK_TOKENS = {
+  bg: "#12181A",
+  paper: "#1C2426",
+  ink: "#E9EEEC",
+  inkSoft: "#93A19D",
+  line: "#2C3739",
+  amber: "#EFC169",
+  amberDeep: "#D89A3E",
+  teal: "#7FA9D4",
+  tealDeep: "#3E6FA0",
+  danger: "#E0796B",
+  dangerBg: "#3A211D",
+  okBg: "#1C2A3A",
+  lockBg: "#20262A",
+};
+
+// 既存コードは C.ink のようにあちこちで参照しているので、
+// オブジェクトの「中身」だけをテーマ切替時に丸ごと書き換える(mutate)。
+const C = { ...LIGHT_TOKENS };
 
 // どの分類も処分の考え方は共通（タンク単位のルール）
 const DISPOSAL_POLICY = "タンク使用開始日から1年経過か、満杯時に廃棄";
@@ -757,8 +793,8 @@ function TopBar({ title, subtitle, onBack, right }) {
         alignItems: "center",
         gap: 10,
         padding: "calc(14px + env(safe-area-inset-top, 0px)) 16px 14px",
-        background: C.paper,
-        borderBottom: `1px solid ${C.line}`,
+        background: HEADER.bg,
+        borderBottom: `1px solid ${HEADER.border}`,
         position: "sticky",
         top: 0,
         zIndex: 5,
@@ -768,7 +804,7 @@ function TopBar({ title, subtitle, onBack, right }) {
         <button
           onClick={onBack}
           aria-label="戻る"
-          style={{ border: "none", background: "transparent", color: C.ink, cursor: "pointer", display: "flex", padding: 6, marginLeft: -6 }}
+          style={{ border: "none", background: "transparent", color: HEADER.text, cursor: "pointer", display: "flex", padding: 6, marginLeft: -6 }}
         >
           <ArrowLeft size={20} />
         </button>
@@ -779,7 +815,7 @@ function TopBar({ title, subtitle, onBack, right }) {
             fontFamily: "'Space Grotesk', sans-serif",
             fontWeight: 700,
             fontSize: 17,
-            color: C.ink,
+            color: HEADER.text,
             letterSpacing: 0.2,
             whiteSpace: "nowrap",
             overflow: "hidden",
@@ -792,7 +828,7 @@ function TopBar({ title, subtitle, onBack, right }) {
           <div
             style={{
               fontSize: 11,
-              color: C.inkSoft,
+              color: HEADER.textSoft,
               marginTop: 1,
               letterSpacing: 0.3,
               whiteSpace: "nowrap",
@@ -2214,7 +2250,7 @@ function ConcentrationCalcModal({ onClose, onApply }) {
             <button
               onClick={onClose}
               aria-label="閉じる"
-              style={{ border: "none", background: "transparent", color: C.ink, cursor: "pointer", display: "flex", padding: 6 }}
+              style={{ border: "none", background: "transparent", color: HEADER.text, cursor: "pointer", display: "flex", padding: 6 }}
             >
               <X size={20} />
             </button>
@@ -2456,6 +2492,19 @@ function ChemStockApp() {
   const [stack, setStack] = useState([{ view: "home" }]);
 const [passcodeGate, setPasscodeGate] = useState(null);
 const [adminPasscode, setAdminPasscode] = useState(DEFAULT_ADMIN_PASSCODE);
+const [theme, setTheme] = useState(() => {
+  try {
+    var saved = localStorage.getItem("themisTheme");
+    if (saved === "dark" || saved === "light") return saved;
+  } catch (e) {}
+  return (window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches) ? "dark" : "light";
+});
+Object.assign(C, theme === "dark" ? DARK_TOKENS : LIGHT_TOKENS);
+useEffect(() => {
+  document.documentElement.dataset.theme = theme;
+  try { localStorage.setItem("themisTheme", theme); } catch (e) {}
+}, [theme]);
+const toggleTheme = () => setTheme((t) => (t === "dark" ? "light" : "dark"));
 
   // ログイン（匿名）→ 初回だけモックデータを流し込み → Firestore購読、の順で立ち上げる。
   // どこで失敗しても画面が真っ白にならないよう、必ずエラーを画面に出す。
@@ -2735,6 +2784,15 @@ const handleDeleteWasteCategories = (wastes) => {
     </>
   }
   subtitle="Tracking of Hazardous materials and Effluent Management Information System"
+  right={
+    <button
+      onClick={toggleTheme}
+      aria-label="ダークモード切替"
+      style={{ border: "none", background: "rgba(255,255,255,.14)", color: HEADER.text, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", width: 32, height: 32, borderRadius: 999, padding: 0, flex: "0 0 auto", fontSize: 14 }}
+    >
+      {theme === "dark" ? "☀️" : "🌙"}
+    </button>
+  }
 />
 
             <HazardStripe height={4} />
