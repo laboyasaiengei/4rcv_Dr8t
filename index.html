@@ -551,7 +551,21 @@ function autoStatus(stock) {
   if (stock.amount >= stock.capacity) return "full";
   return "in_use";
 }
+// タンク使用開始日から数えた経過日数。未設定なら null。
+function daysSinceTankStart(tankStartDate) {
+  if (!tankStartDate) return null;
+  const start = new Date(tankStartDate + "T00:00:00");
+  const diffMs = Date.now() - start.getTime();
+  return Math.floor(diffMs / 86400000);
+}
 
+// 使用開始から1年(365日)を迎える1ヶ月(30日)前を切ったら注意表示にする
+function isTankAgeWarning(waste) {
+  if (!waste || waste.disposed || !waste.tankStartDate) return false;
+  const days = daysSinceTankStart(waste.tankStartDate);
+  return days !== null && days >= 335;
+}
+     
 // 濃度(g/L)を直接入力した記録の集合から、合計使用量・合成濃度(g/L)を算出する
 // ※必ず「同じ薬品(substanceName)」の記録同士に対して使うこと
 function summarizeEntries(entries) {
@@ -940,7 +954,7 @@ function WasteCodeTag({ waste, size = "normal" }) {
           fontFamily: "'Space Grotesk', sans-serif",
           fontWeight: 700,
           fontSize: size === "large" ? 22 : size === "small" ? 13 : 16,
-          color: waste.color,
+          color: C.ink,
         }}
       >
         {waste.code}
@@ -1187,6 +1201,7 @@ function WasteTab({ wasteCategories, onOpenWaste, onOpenCalc, onOpenArchive, onA
       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
         {sorted.map((w) => {
           const sum = summarizeEntries(w.entries);
+          const ageWarn = isTankAgeWarning(w);
           return (
             <button
               key={w.id}
@@ -1196,7 +1211,10 @@ function WasteTab({ wasteCategories, onOpenWaste, onOpenCalc, onOpenArchive, onA
               <div style={{ width: 6, background: w.color, flexShrink: 0 }} />
               <div style={{ flex: 1, padding: "13px 14px", display: "flex", alignItems: "center", gap: 10 }}>
                 <div style={{ flex: 1 }}>
-                  <WasteCodeTag waste={w} />
+                  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                    <WasteCodeTag waste={w} />
+                    {ageWarn && <AlertTriangle size={14} color={C.danger} />}
+                  </div>
                   <div style={{ fontSize: 12, color: C.inkSoft, marginTop: 6 }}>
                     {w.entries.length}件の記録・合計 {sum.totalVolumeMl} mL
                   </div>
@@ -1621,7 +1639,7 @@ function ChemicalDetail({ chemical, waste, onBack, onOpenLocation, onOpenWaste, 
         <button
           onClick={() => hasWaste && onRecordWaste(chemical, waste)}
           disabled={!hasWaste}
-          style={{ width: "100%", border: `1.5px solid ${safeWaste.color}`, background: "#fff", color: safeWaste.color, fontSize: 14, fontWeight: 700, borderRadius: 12, padding: "12px", cursor: hasWaste ? "pointer" : "not-allowed", opacity: hasWaste ? 1 : 0.6, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}
+          style={{ width: "100%", border: `1.5px solid ${safeWaste.color}`, background: C.paper, color: C.ink, fontSize: 14, fontWeight: 700, borderRadius: 12, padding: "12px", cursor: hasWaste ? "pointer" : "not-allowed", opacity: hasWaste ? 1 : 0.6, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}
         >
           <Plus size={16} /> この薬品の廃液を記録する
         </button>
@@ -1810,7 +1828,13 @@ function WastePage({ waste, onBack, onOpenSubstance, onAddOther, onDispose }) {
             {waste.tankStartDate || "未設定"}
           </span>
         </div>
-
+           {!disposed && isTankAgeWarning(waste) && (
+          <div style={{ display: "flex", alignItems: "center", gap: 8, background: C.dangerBg, border: `1px solid ${C.danger}`, borderRadius: 12, padding: "12px 14px", marginBottom: 12, color: C.danger, fontSize: 12.5, fontWeight: 700 }}>
+            <AlertTriangle size={16} />
+            まもなく使用開始から1年経過します（{waste.tankStartDate}〜）。処分の準備をしてください。
+          </div>
+        )}
+           
         <SectionLabel>処分方法</SectionLabel>
         <div style={{ background: C.paper, border: `1px solid ${C.line}`, borderRadius: 14, padding: 16, fontSize: 14, lineHeight: 1.8, color: C.ink, marginBottom: 20 }}>
           {waste.disposal}
@@ -2805,7 +2829,7 @@ const handleDeleteWasteCategories = (wastes) => {
                   <button
                     key={t.key}
                     onClick={() => setHomeTab(t.key)}
-                    style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 4, padding: "9px 4px", borderRadius: 10, border: "none", cursor: "pointer", background: active ? C.ink : "transparent", color: active ? "#fff" : C.inkSoft, fontSize: 11.5, fontWeight: 600, transition: "background 0.15s" }}
+                    style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 4, padding: "9px 4px", borderRadius: 10, border: "none", cursor: "pointer", background: active ? HEADER.bg : "transparent", color: active ? "#fff" : C.inkSoft, fontSize: 11.5, fontWeight: 600, transition: "background 0.15s" }}
                   >
                     <Icon size={16} />
                     {t.label}
