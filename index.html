@@ -32,13 +32,38 @@
 
 <style>
   html, body { margin: 0; padding: 0; background: #EEF1EC; -webkit-tap-highlight-color: transparent; }
-  * { box-sizing: border-box; font-feature-settings: "zero" 1; font-variant-numeric: normal; transition: background-color .3s ease, color .3s ease, border-color .3s ease, box-shadow .3s ease; }
+  * { box-sizing: border-box; font-feature-settings: "zero" 1; font-variant-numeric: normal; }
   input, textarea { font-family: inherit; }
   #boot-error { display: none; }
   @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
   @keyframes shake { 10%, 90% { transform: translateX(-2px); } 20%, 80% { transform: translateX(4px); } 30%, 50%, 70% { transform: translateX(-8px); } 40%, 60% { transform: translateX(8px); } }
   @keyframes keyPress { 0% { transform: scale(1); } 50% { transform: scale(0.9); } 100% { transform: scale(1); } }
 html[data-theme="dark"], html[data-theme="dark"] body { background: #12181A; }
+
+  /* ダークモード切り替え演出用の"カーテン"。
+     全要素（renderFormulaが1文字ずつ生成するspanを含む）を個別にアニメーション
+     させる代わりに、この1枚だけをフェードさせて色の切り替わりを覆い隠す
+     （iPhone Safariでのコマ落ち対策）。 */
+  .theme-curtain{
+    position: fixed; inset: 0; z-index: 99999;
+    background: #EEF1EC;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .25s ease;
+  }
+
+  /* iPad・MacBookなど画面幅が広い端末で、スマホ幅に貼り付いて見えないようにする */
+  .app-shell{
+    width: 100%;
+    max-width: 720px;
+    min-height: 100vh;
+  }
+  @media (min-width: 768px){
+    .app-shell{ max-width: 900px; }
+  }
+  @media (min-width: 1100px){
+    .app-shell{ max-width: 1080px; }
+  }
 </style>
 <script>
 (function(){
@@ -57,6 +82,7 @@ html[data-theme="dark"], html[data-theme="dark"] body { background: #12181A; }
   <p style="font-size: 12px; color: #4E625E;">ブラウザの開発者ツール（コンソール）に詳細が出ています。ネットワーク接続や広告ブロッカーが原因で、React・Babel・Firebaseの読み込み自体に失敗している可能性があります。</p>
 </div>
 <div id="root"></div>
+<div id="themeCurtain" class="theme-curtain"></div>
 
 <script>
   window.addEventListener('error', function (e) {
@@ -2699,7 +2725,26 @@ useEffect(() => {
   document.documentElement.dataset.theme = theme;
   try { localStorage.setItem("themisTheme", theme); } catch (e) {}
 }, [theme]);
-const toggleTheme = () => setTheme((t) => (t === "dark" ? "light" : "dark"));
+const toggleTheme = () => {
+  const next = theme === "dark" ? "light" : "dark";
+  const curtain = document.getElementById("themeCurtain");
+  if (!curtain) {
+    // 万一カーテン要素が無い場合は従来通り即切り替え
+    setTheme(next);
+    return;
+  }
+  // 1) 切り替え後の背景色でカーテンを画面全体にフェードイン（覆い隠す）
+  curtain.style.background = next === "dark" ? DARK_TOKENS.bg : LIGHT_TOKENS.bg;
+  curtain.style.opacity = "1";
+  // 2) カーテンが覆い切ったタイミングで、Reactの状態を裏側で切り替える
+  window.setTimeout(() => {
+    setTheme(next);
+    // 3) 切り替え済みの画面をカーテンごしにフェードアウトさせて見せる
+    requestAnimationFrame(() => {
+      curtain.style.opacity = "0";
+    });
+  }, 260);
+};
 
   // ログイン（匿名）→ 初回だけモックデータを流し込み → Firestore購読、の順で立ち上げる。
   // どこで失敗しても画面が真っ白にならないよう、必ずエラーを画面に出す。
@@ -3006,7 +3051,7 @@ const handleDeleteWasteCategories = (wastes) => {
   return (
     <div style={{ fontFamily: "'Inter', sans-serif", background: C.bg, minHeight: "100vh", display: "flex", justifyContent: "center" }}>
       <style>{FONT_IMPORT}</style>
-      <div style={{ width: "100%", maxWidth: "min(96vw, 720px)", minHeight: "100vh", background: C.bg, display: "flex", flexDirection: "column" }}>
+      <div className="app-shell" style={{ background: C.bg, display: "flex", flexDirection: "column" }}>
         {current.view === "home" && (
           <>
             <TopBar
