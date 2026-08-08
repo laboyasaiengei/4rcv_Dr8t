@@ -14,6 +14,8 @@
 <meta name="apple-mobile-web-app-title" content="THEMIS" />
 <meta name="theme-color" content="#122A4E" />
 <meta name="mobile-web-app-capable" content="yes" />
+<link rel="manifest" href="icons/manifest.webmanifest">
+<link rel="apple-touch-startup-image" href="icons/splash-light.png">
      
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -67,9 +69,10 @@ html[data-theme="dark"], html[data-theme="dark"] body { background: #12181A; }
 </style>
 <script>
 (function(){
-  var saved = localStorage.getItem('themisTheme');
-  var theme = saved || (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
-  document.documentElement.dataset.theme = theme;
+  // 起動時は常にlight固定。splash(manifestのbackground_color)と初期描画色を
+  // 一致させることで起動時の色チラつきを防ぐ。ダークにしたい場合は起動後に
+  // 手動トグルで都度切り替える方式とし、OS判定・保存は行わない。
+  document.documentElement.dataset.theme = 'light';
 })();
 </script>
 </head>
@@ -2713,17 +2716,10 @@ function ChemStockApp() {
   const [stack, setStack] = useState([{ view: "home" }]);
 const [passcodeGate, setPasscodeGate] = useState(null);
 const [adminPasscode, setAdminPasscode] = useState(DEFAULT_ADMIN_PASSCODE);
-const [theme, setTheme] = useState(() => {
-  try {
-    var saved = localStorage.getItem("themisTheme");
-    if (saved === "dark" || saved === "light") return saved;
-  } catch (e) {}
-  return (window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches) ? "dark" : "light";
-});
+const [theme, setTheme] = useState("light");
 Object.assign(C, theme === "dark" ? DARK_TOKENS : LIGHT_TOKENS);
 useEffect(() => {
   document.documentElement.dataset.theme = theme;
-  try { localStorage.setItem("themisTheme", theme); } catch (e) {}
 }, [theme]);
 const toggleTheme = () => {
   const next = theme === "dark" ? "light" : "dark";
